@@ -1,6 +1,6 @@
 pub mod account;
 pub mod block;
-mod error;
+pub mod error;
 mod helpers;
 mod request;
 pub mod transaction;

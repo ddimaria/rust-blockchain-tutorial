@@ -2,14 +2,14 @@ use async_jsonrpc_client::{HttpClient, Output, Params, Transport};
 use log::*;
 use serde_json::Value;
 
-use crate::error::BlockChainError;
+use crate::error::{BlockChainError, Result};
 
-fn get_client() -> Result<HttpClient, BlockChainError> {
+fn get_client() -> Result<HttpClient> {
     HttpClient::new("http://127.0.0.1:8545")
         .map_err(|e| BlockChainError::ClientError(e.to_string()))
 }
 
-pub async fn send(method: &str, params: Option<Params>) -> Result<Value, BlockChainError> {
+pub async fn send(method: &str, params: Option<Params>) -> Result<Value> {
     debug!("Sending {} with params {:?}", method, params);
 
     let client = get_client()?;

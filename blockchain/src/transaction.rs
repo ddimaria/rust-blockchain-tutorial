@@ -12,15 +12,3 @@ pub struct Transaction {
     pub gas_price: U256,
     pub data: Option<Vec<u8>>,
 }
-
-// impl Transaction {
-//     pub fn sign(&self, address: Address, data: Vec<u8>Vec<u8>)  {
-//         let address = helpers::serialize(&address);
-//         let data = helpers::serialize(&data);
-//         CallFuture::new(self.transport.execute("eth_sign", vec![address, data]))
-//     }
-//     pub fn send(&self) {
-//         let tx = helpers::serialize(&tx);
-//         CallFuture::new(self.transport.execute("eth_sendTransaction", vec![tx]))
-//     }
-// }

@@ -1,6 +1,7 @@
-use crate::error::BlockChainError;
 use ethereum_types::U64;
 use std::fmt::{Display, LowerHex};
+
+use crate::error::BlockChainError;
 
 #[allow(non_snake_case)]
 pub fn hex_to_U64(hex: String) -> Result<U64, BlockChainError> {

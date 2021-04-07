@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use crate::error::BlockChainError;
+use crate::error::{BlockChainError, Result};
 use crate::helpers::{hex_to_U64, to_hex};
 use crate::request::send;
 use crate::transaction::Transaction;
@@ -36,7 +36,7 @@ impl From<i32> for BlockNumber {
 impl TryFrom<String> for BlockNumber {
     type Error = BlockChainError;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self> {
         let parsed = hex_to_U64(value)?;
         Ok(BlockNumber(parsed))
     }
@@ -58,14 +58,14 @@ pub struct Block {
     pub transactions: Vec<Transaction>,
 }
 
-pub async fn get_block_number() -> Result<BlockNumber, BlockChainError> {
+pub async fn get_block_number() -> Result<BlockNumber> {
     let response = send("eth_blockNumber", None).await?;
     let block_number: BlockNumber = serde_json::from_value(response)?;
 
     Ok(block_number)
 }
 
-pub async fn get_block(block_number: U64) -> Result<Block, BlockChainError> {
+pub async fn get_block(block_number: U64) -> Result<Block> {
     let block_number = to_hex(block_number);
     let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
     let response = send("eth_getBlockByNumber", Some(params)).await?;

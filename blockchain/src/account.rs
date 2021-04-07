@@ -3,20 +3,20 @@ use ethereum_types::{Address, U256};
 use serde_json::Value;
 
 use crate::block::BlockNumber;
-use crate::error::BlockChainError;
+use crate::error::Result;
 use crate::helpers::to_hex;
 use crate::request::send;
 
 pub type Account = Address;
 
-pub async fn get_all_accounts() -> Result<Vec<Account>, BlockChainError> {
+pub async fn get_all_accounts() -> Result<Vec<Account>> {
     let response = send("eth_accounts", None).await?;
     let accounts: Vec<Account> = serde_json::from_value(response)?;
 
     Ok(accounts)
 }
 
-pub async fn get_balance(address: Account) -> Result<U256, BlockChainError> {
+pub async fn get_balance(address: Account) -> Result<U256> {
     let balance: U256 = get_balance_by_block(address, None).await?;
 
     Ok(balance)
@@ -25,7 +25,7 @@ pub async fn get_balance(address: Account) -> Result<U256, BlockChainError> {
 pub async fn get_balance_by_block(
     address: Account,
     block_number: Option<BlockNumber>,
-) -> Result<U256, BlockChainError> {
+) -> Result<U256> {
     let block_number = block_number.map_or_else(
         || "latest".to_string(),
         |block_number| to_hex(*block_number),

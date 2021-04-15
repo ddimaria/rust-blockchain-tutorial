@@ -1,0 +1,10 @@
+[package]
+name = "types"
+version = "0.1.0"
+authors = ["David DiMaria <info@collectivesessions.com>"]
+edition = "2018"
+
+[dependencies]
+ethereum-types = "0.10.0"
+serde = "1"
+serde_json = "1"

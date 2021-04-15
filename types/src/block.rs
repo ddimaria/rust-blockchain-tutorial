@@ -1,13 +1,10 @@
-use async_jsonrpc_client::Params;
 use ethereum_types::{Address, Secret, U256, U64};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use crate::error::{BlockChainError, Result};
-use crate::helpers::{hex_to_U64, to_hex};
-use crate::request::send;
+use crate::error::{Result, TypeError};
+use crate::helpers::hex_to_U64;
 use crate::transaction::Transaction;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,7 +31,7 @@ impl From<i32> for BlockNumber {
 }
 
 impl TryFrom<String> for BlockNumber {
-    type Error = BlockChainError;
+    type Error = TypeError;
 
     fn try_from(value: String) -> Result<Self> {
         let parsed = hex_to_U64(value)?;
@@ -56,22 +53,6 @@ pub struct Block {
     pub gas_limit: U256,
     pub difficulty: U256,
     pub transactions: Vec<Transaction>,
-}
-
-pub async fn get_block_number() -> Result<BlockNumber> {
-    let response = send("eth_blockNumber", None).await?;
-    let block_number: BlockNumber = serde_json::from_value(response)?;
-
-    Ok(block_number)
-}
-
-pub async fn get_block(block_number: U64) -> Result<Block> {
-    let block_number = to_hex(block_number);
-    let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
-    let response = send("eth_getBlockByNumber", Some(params)).await?;
-    let result: Block = serde_json::from_value(response)?;
-
-    Ok(result)
 }
 
 /*
@@ -100,20 +81,3 @@ Object({
 })
 
 */
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn it_gets_a_block_number() {
-        let response = get_block_number().await;
-        assert!(response.is_ok());
-    }
-
-    #[tokio::test]
-    async fn it_gets_the_zero_block() {
-        let response = get_block(U64::from(0)).await;
-        assert!(response.is_ok());
-    }
-}

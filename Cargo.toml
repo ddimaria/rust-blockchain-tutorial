@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "types",
+    "web3",
+]
+
+exclude = ["client"]

@@ -1,13 +1,12 @@
 use async_jsonrpc_client::Params;
-use ethereum_types::{Address, U256};
+use ethereum_types::U256;
 use serde_json::Value;
+use types::account::Account;
+use types::block::BlockNumber;
+use types::helpers::to_hex;
 
-use crate::block::BlockNumber;
 use crate::error::Result;
-use crate::helpers::to_hex;
 use crate::request::send;
-
-pub type Account = Address;
 
 pub async fn get_all_accounts() -> Result<Vec<Account>> {
     let response = send("eth_accounts", None).await?;

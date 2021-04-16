@@ -6,10 +6,10 @@ use types::block::BlockNumber;
 use types::helpers::to_hex;
 
 use crate::error::Result;
-use crate::request::send;
+use crate::request::send_rpc;
 
 pub async fn get_all_accounts() -> Result<Vec<Account>> {
-    let response = send("eth_accounts", None).await?;
+    let response = send_rpc("eth_accounts", None).await?;
     let accounts: Vec<Account> = serde_json::from_value(response)?;
 
     Ok(accounts)
@@ -33,7 +33,7 @@ pub async fn get_balance_by_block(
         Value::String(to_hex(address)),
         Value::String(block_number),
     ]);
-    let response = send("eth_getBalance", Some(params)).await?;
+    let response = send_rpc("eth_getBalance", Some(params)).await?;
     let balance: U256 = serde_json::from_value(response)?;
 
     Ok(balance)

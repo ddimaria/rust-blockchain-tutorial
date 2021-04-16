@@ -9,7 +9,7 @@ fn get_client() -> Result<HttpClient> {
         .map_err(|e| BlockChainError::ClientError(e.to_string()))
 }
 
-pub async fn send(method: &str, params: Option<Params>) -> Result<Value> {
+pub async fn send_rpc(method: &str, params: Option<Params>) -> Result<Value> {
     debug!("Sending {} with params {:?}", method, params);
 
     let client = get_client()?;
@@ -30,7 +30,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_sends() {
-        let response = send("eth_blockNumber", None).await;
+        let response = send_rpc("eth_blockNumber", None).await;
         assert!(response.is_ok());
     }
 }

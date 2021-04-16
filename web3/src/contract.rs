@@ -1,12 +1,12 @@
 use ethereum_types::Address;
-use ethereum_types::U256;
+use ethereum_types::{H256, U256};
 use types::bytes::Bytes;
 use types::transaction::TransactionRequest;
 
 use crate::error::Result;
-use crate::transaction::send_transaction;
+use crate::transaction::send;
 
-pub async fn deploy(owner: Address, abi: &[u8]) -> Result<U256> {
+pub async fn deploy(owner: Address, abi: &[u8]) -> Result<H256> {
     let gas = U256::from(1_000_000);
     let gas_price = U256::from(1_000_000);
     let data: Bytes = abi.into();
@@ -19,7 +19,7 @@ pub async fn deploy(owner: Address, abi: &[u8]) -> Result<U256> {
         data: Some(data),
     };
 
-    send_transaction(transaction_request).await
+    send(transaction_request).await
 }
 
 #[cfg(test)]

@@ -5,10 +5,10 @@ use types::block::{Block, BlockNumber};
 use types::helpers::to_hex;
 
 use crate::error::Result;
-use crate::request::send;
+use crate::request::send_rpc;
 
 pub async fn get_block_number() -> Result<BlockNumber> {
-    let response = send("eth_blockNumber", None).await?;
+    let response = send_rpc("eth_blockNumber", None).await?;
     let block_number: BlockNumber = serde_json::from_value(response)?;
 
     Ok(block_number)
@@ -17,7 +17,7 @@ pub async fn get_block_number() -> Result<BlockNumber> {
 pub async fn get_block(block_number: U64) -> Result<Block> {
     let block_number = to_hex(block_number);
     let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
-    let response = send("eth_getBlockByNumber", Some(params)).await?;
+    let response = send_rpc("eth_getBlockByNumber", Some(params)).await?;
     let result: Block = serde_json::from_value(response)?;
 
     Ok(result)

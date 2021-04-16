@@ -1,3 +1,9 @@
+//! # Blocks
+//!
+//! Retrieve information about blocks on Ethereum.
+
+////////////////////////////////////////////////////////////////////////////////
+
 use async_jsonrpc_client::Params;
 use ethereum_types::U64;
 use serde_json::Value;
@@ -7,6 +13,17 @@ use types::helpers::to_hex;
 use crate::error::Result;
 use crate::request::send_rpc;
 
+/// Retrieve the block number of the current block.
+///
+/// See https://eth.wiki/json-rpc/API#eth_blockNumber
+///
+/// # Examples
+///
+/// ```ignore
+/// use web3::block::get_block_number;
+///
+/// let block_number = get_block_number()).await;
+/// ```
 pub async fn get_block_number() -> Result<BlockNumber> {
     let response = send_rpc("eth_blockNumber", None).await?;
     let block_number: BlockNumber = serde_json::from_value(response)?;
@@ -14,6 +31,18 @@ pub async fn get_block_number() -> Result<BlockNumber> {
     Ok(block_number)
 }
 
+/// Retrieve the block information using the block number.
+///
+/// See https://eth.wiki/json-rpc/API#eth_getBlockByNumber
+///
+/// # Examples
+///
+/// ```ignore
+/// use web3::block::get_block;
+///
+/// let block_number = U64::from(0);
+/// let block = get_block(block_number)).await;
+/// ```
 pub async fn get_block(block_number: U64) -> Result<Block> {
     let block_number = to_hex(block_number);
     let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);

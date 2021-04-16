@@ -2,6 +2,8 @@
 //!
 //! Deploy and interact with contracts on Ethereum.
 
+////////////////////////////////////////////////////////////////////////////////
+
 use ethereum_types::Address;
 use ethereum_types::{H256, U256};
 use types::bytes::Bytes;

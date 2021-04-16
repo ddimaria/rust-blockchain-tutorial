@@ -2,6 +2,8 @@
 //!
 //! Generate Ethereum accounts and sign transactions and data.
 
+////////////////////////////////////////////////////////////////////////////////
+
 use async_jsonrpc_client::Params;
 use ethereum_types::U256;
 use serde_json::Value;
@@ -12,7 +14,7 @@ use types::helpers::to_hex;
 use crate::error::Result;
 use crate::request::send_rpc;
 
-/// Retrieve all list of all addresses/accounts
+/// Retrieve all list of all addresses/accounts.
 ///
 /// See https://eth.wiki/json-rpc/API#eth_accounts
 ///

@@ -1,3 +1,13 @@
+//! # Transactions
+//!
+//! Accounts send transactions to the blockchain.
+//! Within the blockchain, transactions are cryptographically signed.
+//! Transactions live within blocks.
+//!
+//! see https://ethereum.org/en/developers/docs/transactions/
+
+////////////////////////////////////////////////////////////////////////////////
+
 use ethereum_types::{Address, Secret, U256};
 use serde::{Deserialize, Serialize};
 

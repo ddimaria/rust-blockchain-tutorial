@@ -20,7 +20,7 @@ let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 use web3::account::get_all_accounts;
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let all_accounts = get_all_accounts().await;
+let all_accounts = web3.get_all_accounts().await;
 ```
 
 ### Get Account Balance
@@ -29,8 +29,8 @@ let all_accounts = get_all_accounts().await;
 use web3::account::{get_all_accounts, get_balance};
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let account = get_all_accounts().await.unwrap()[0].clone();
-let balance = get_balance(account).await;
+let account = web3.get_all_accounts().await.unwrap()[0].clone();
+let balance = web3.get_balance(account).await;
 ```
 
 ### Get Account Balance from a Block

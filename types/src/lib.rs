@@ -1,3 +1,9 @@
+//! # Types
+//!
+//! Simple types that abstract Ethereum types.
+
+////////////////////////////////////////////////////////////////////////////////
+
 pub mod account;
 pub mod block;
 pub mod bytes;

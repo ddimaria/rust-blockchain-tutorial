@@ -80,7 +80,7 @@ let from = get_all_accounts().await.unwrap()[0];
 let to = get_all_accounts().await.unwrap()[0];
 let gas = U256::from(1_000_000);
 let gas_price = U256::from(1);
-let data = get_contract();
+let data = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
 let transaction_request = TransactionRequest {
     from: None,
     to: Some(to),

@@ -24,6 +24,7 @@ use crate::request::send_rpc;
 /// use web3::account::get_all_accounts;
 ///
 /// let all_accounts = get_all_accounts().await;
+/// assert!(all_accounts.is_ok());
 /// ```
 pub async fn get_all_accounts() -> Result<Vec<Account>> {
     let response = send_rpc("eth_accounts", None).await?;
@@ -43,6 +44,7 @@ pub async fn get_all_accounts() -> Result<Vec<Account>> {
 ///
 /// let account = get_all_accounts().await.unwrap()[0].clone();
 /// let balance = get_balance(account).await;
+/// assert!(balance.is_ok());
 /// ```
 pub async fn get_balance(address: Account) -> Result<U256> {
     let balance: U256 = get_balance_by_block(address, None).await?;
@@ -63,6 +65,7 @@ pub async fn get_balance(address: Account) -> Result<U256> {
 /// let block = BlockNumber(0.into());
 /// let account = get_all_accounts().await.unwrap()[0];
 /// let balance = get_balance_by_block(account, Some(block)).await;
+/// assert!(balance.is_ok());
 /// ```
 pub async fn get_balance_by_block(
     address: Account,

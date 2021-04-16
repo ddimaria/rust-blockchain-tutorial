@@ -23,6 +23,7 @@ use crate::transaction::send;
 /// let account = get_all_accounts().await.unwrap()[0];
 /// let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
 /// let tx_hash = deploy(account, &contract).await;
+/// assert!(tx_hash.is_ok());
 /// ```
 pub async fn deploy(owner: Address, abi: &[u8]) -> Result<H256> {
     let gas = U256::from(1_000_000);

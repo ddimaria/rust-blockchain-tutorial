@@ -23,6 +23,7 @@ use crate::request::send_rpc;
 /// use web3::block::get_block_number;
 ///
 /// let block_number = get_block_number()).await;
+/// assert!(block_number.is_ok());
 /// ```
 pub async fn get_block_number() -> Result<BlockNumber> {
     let response = send_rpc("eth_blockNumber", None).await?;
@@ -42,6 +43,7 @@ pub async fn get_block_number() -> Result<BlockNumber> {
 ///
 /// let block_number = U64::from(0);
 /// let block = get_block(block_number)).await;
+/// assert!(block.is_ok());
 /// ```
 pub async fn get_block(block_number: U64) -> Result<Block> {
     let block_number = to_hex(block_number);

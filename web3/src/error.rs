@@ -17,10 +17,13 @@ pub enum Web3Error {
     JsonParseError(String),
 
     #[error("Error sending a HTTP JSON-RPC call: {0}")]
-    RequestError(String),
+    RpcRequestError(String),
+
+    #[error("Error receiving a HTTP JSON-RPC response: {0}")]
+    RpcResponseError(String),
 }
 
-/// Utility result type to be used throughout.
+/// Utility result type to be used throughout
 pub type Result<T> = std::result::Result<T, Web3Error>;
 
 /// Generically convert serde errors to Web3Error::JsonParseError

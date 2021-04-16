@@ -1,3 +1,9 @@
+//! # Helpers
+//!
+//! General purpose utilties that don't have a home :(
+
+////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 pub mod tests {
     pub fn get_contract() -> Vec<u8> {

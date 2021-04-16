@@ -88,7 +88,7 @@ let transaction_request = TransactionRequest {
     gas,
     gas_price,
     data: Some(data.into()),
-};
+    };
 let tx_hash = send(transaction_request).await;
 ```
 

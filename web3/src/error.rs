@@ -1,15 +1,31 @@
-#[derive(Debug)]
-pub enum BlockChainError {
+//! # Errors
+//!
+//! Custom errors for the whole library.
+//! Utility types related to errors (Result).
+//! Convert errors from dependencies.
+
+////////////////////////////////////////////////////////////////////////////////
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Web3Error {
+    #[error("Error creating a new HTTP JSON-RPC client: {0}")]
     ClientError(String),
-    ParseError(String),
+
+    #[error("Error serializing or deserializing JSON data: {0}")]
+    JsonParseError(String),
+
+    #[error("Error sending a HTTP JSON-RPC call: {0}")]
     RequestError(String),
-    ResponseError(String),
 }
 
-pub type Result<T> = std::result::Result<T, BlockChainError>;
+/// Utility result type to be used throughout.
+pub type Result<T> = std::result::Result<T, Web3Error>;
 
-impl From<serde_json::Error> for BlockChainError {
+/// Generically convert serde errors to Web3Error::JsonParseError
+impl From<serde_json::Error> for Web3Error {
     fn from(error: serde_json::Error) -> Self {
-        BlockChainError::ParseError(error.to_string())
+        Web3Error::JsonParseError(error.to_string())
     }
 }

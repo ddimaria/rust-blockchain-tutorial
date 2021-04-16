@@ -6,6 +6,12 @@ This Web3 driver is a learning aid for understanding how real Web3 drivers inter
 
 This crate interacts with the Hardhat chain in the [contracts](../contracts) directory.
 
+## Create a Web3 Instance
+
+```rust
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+```
+
 ## Accounts
 
 ### Get All Accounts
@@ -13,6 +19,7 @@ This crate interacts with the Hardhat chain in the [contracts](../contracts) dir
 ```rust
 use web3::account::get_all_accounts;
 
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let all_accounts = get_all_accounts().await;
 ```
 
@@ -21,6 +28,7 @@ let all_accounts = get_all_accounts().await;
 ```rust
 use web3::account::{get_all_accounts, get_balance};
 
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let account = get_all_accounts().await.unwrap()[0].clone();
 let balance = get_balance(account).await;
 ```
@@ -31,9 +39,10 @@ let balance = get_balance(account).await;
 use types::block::BlockNumber;
 use web3::account::{get_all_accounts, get_balance_by_block};
 
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let block = BlockNumber(0.into());
-let account = get_all_accounts().await.unwrap()[0];
-let balance = get_balance_by_block(account, Some(block)).await;
+let account = web3.get_all_accounts().await.unwrap()[0];
+let balance = web3.get_balance_by_block(account, Some(block)).await;
 ```
 
 ## Blocks
@@ -43,7 +52,8 @@ let balance = get_balance_by_block(account, Some(block)).await;
 ```rust
 use web3::block::get_block_number;
 
-let block_number = get_block_number()).await;
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let block_number = web3.get_block_number()).await;
 ```
 
 ### Retrieve a Block
@@ -51,8 +61,9 @@ let block_number = get_block_number()).await;
 ```rust
 use web3::block::get_block;
 
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let block_number = U64::from(0);
-let block = get_block(block_number)).await;
+let block = web3.get_block(block_number)).await;
 ```
 
 ## Contracts
@@ -63,9 +74,10 @@ let block = get_block(block_number)).await;
 use web3::account::get_all_accounts;
 use web3::contract::deploy;
 
-let account = get_all_accounts().await.unwrap()[0];
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let account = web3.get_all_accounts().await.unwrap()[0];
 let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
-let tx_hash = deploy(account, &contract).await;
+let tx_hash = web3.deploy(account, &contract).await;
 ```
 
 ## Transactions
@@ -73,11 +85,13 @@ let tx_hash = deploy(account, &contract).await;
 ### Send a Transaction
 
 ```rust
+use types::transaction::TransactionRequest;
 use web3::account::get_all_accounts;
 use web3::transaction::send;
 
-let from = get_all_accounts().await.unwrap()[0];
-let to = get_all_accounts().await.unwrap()[0];
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let from = web3.get_all_accounts().await.unwrap()[0];
+let to = web3.get_all_accounts().await.unwrap()[1];
 let gas = U256::from(1_000_000);
 let gas_price = U256::from(1);
 let data = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
@@ -89,7 +103,7 @@ let transaction_request = TransactionRequest {
     gas_price,
     data: Some(data.into()),
     };
-let tx_hash = send(transaction_request).await;
+let tx_hash = web3.send(transaction_request).await;
 ```
 
 ## Other Work

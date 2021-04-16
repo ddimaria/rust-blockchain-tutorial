@@ -1,6 +1,8 @@
 //! # Blocks
 //!
 //! Retrieve information about blocks on Ethereum.
+//!
+//! see https://ethereum.org/en/developers/docs/blocks/
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -11,47 +13,51 @@ use types::block::{Block, BlockNumber};
 use types::helpers::to_hex;
 
 use crate::error::Result;
-use crate::request::send_rpc;
+use crate::Web3;
 
-/// Retrieve the block number of the current block.
-///
-/// See https://eth.wiki/json-rpc/API#eth_blockNumber
-///
-/// # Examples
-///
-/// ```ignore
-/// use web3::block::get_block_number;
-///
-/// let block_number = get_block_number()).await;
-/// assert!(block_number.is_ok());
-/// ```
-pub async fn get_block_number() -> Result<BlockNumber> {
-    let response = send_rpc("eth_blockNumber", None).await?;
-    let block_number: BlockNumber = serde_json::from_value(response)?;
+impl Web3 {
+    /// Retrieve the block number of the current block.
+    ///
+    /// See https://eth.wiki/json-rpc/API#eth_blockNumber
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use web3::block::get_block_number;
+    ///
+    /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+    /// let block_number = web3.get_block_number()).await;
+    /// assert!(block_number.is_ok());
+    /// ```
+    pub async fn get_block_number(&self) -> Result<BlockNumber> {
+        let response = self.send_rpc("eth_blockNumber", None).await?;
+        let block_number: BlockNumber = serde_json::from_value(response)?;
 
-    Ok(block_number)
-}
+        Ok(block_number)
+    }
 
-/// Retrieve the block information using the block number.
-///
-/// See https://eth.wiki/json-rpc/API#eth_getBlockByNumber
-///
-/// # Examples
-///
-/// ```ignore
-/// use web3::block::get_block;
-///
-/// let block_number = U64::from(0);
-/// let block = get_block(block_number)).await;
-/// assert!(block.is_ok());
-/// ```
-pub async fn get_block(block_number: U64) -> Result<Block> {
-    let block_number = to_hex(block_number);
-    let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
-    let response = send_rpc("eth_getBlockByNumber", Some(params)).await?;
-    let result: Block = serde_json::from_value(response)?;
+    /// Retrieve the block information using the block number.
+    ///
+    /// See https://eth.wiki/json-rpc/API#eth_getBlockByNumber
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use web3::block::get_block;
+    ///
+    /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+    /// let block_number = U64::from(0);
+    /// let block = web3.get_block(block_number)).await;
+    /// assert!(block.is_ok());
+    /// ```
+    pub async fn get_block(&self, block_number: U64) -> Result<Block> {
+        let block_number = to_hex(block_number);
+        let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
+        let response = self.send_rpc("eth_getBlockByNumber", Some(params)).await?;
+        let result: Block = serde_json::from_value(response)?;
 
-    Ok(result)
+        Ok(result)
+    }
 }
 
 /*
@@ -84,16 +90,17 @@ Object({
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::helpers::tests::web3;
 
     #[tokio::test]
     async fn it_gets_a_block_number() {
-        let response = get_block_number().await;
+        let response = web3().get_block_number().await;
         assert!(response.is_ok());
     }
 
     #[tokio::test]
     async fn it_gets_the_zero_block() {
-        let response = get_block(U64::from(0)).await;
+        let response = web3().get_block(U64::from(0)).await;
         assert!(response.is_ok());
     }
 }

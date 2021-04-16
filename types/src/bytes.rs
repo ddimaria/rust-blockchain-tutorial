@@ -1,3 +1,11 @@
+//! # Bytes
+//!
+//! Bytes is a wrapper type for Vec<u8>.
+//! They are wrapped to automatically convert the bytes into hex
+//! when serialiazing, and from hex back to bytes when deserializing.
+
+////////////////////////////////////////////////////////////////////////////////
+
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -10,6 +18,7 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
     }
 }
 
+// Convert Bytes to hex when serializing
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -20,6 +29,7 @@ impl Serialize for Bytes {
     }
 }
 
+// Convert hex to bytes when deserializing
 impl<'a> Deserialize<'a> for Bytes {
     fn deserialize<D>(deserializer: D) -> Result<Bytes, D::Error>
     where

@@ -29,11 +29,30 @@ let balance = get_balance(account).await;
 
 ```rust
 use types::block::BlockNumber;
-use web3::account::{get_all_accounts, get_balance};
+use web3::account::{get_all_accounts, get_balance_by_block};
 
 let block = BlockNumber(0.into());
 let account = get_all_accounts().await.unwrap()[0].clone();
 let balance = get_balance_by_block(account, Some(block)).await;
+```
+
+## Blocks
+
+### Get Current Block Number
+
+```rust
+use web3::block::get_block_number;
+
+let block_number = get_block_number()).await;
+```
+
+### Retrieve a Block
+
+```rust
+use web3::block::get_block;
+
+let block_number = U64::from(0);
+let block = get_block(block_number)).await;
 ```
 
 ## Other Work

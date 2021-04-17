@@ -17,7 +17,6 @@ let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 ### Get All Accounts
 
 ```rust
-use web3::account::get_all_accounts;
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let all_accounts = web3.get_all_accounts().await;
@@ -71,7 +70,6 @@ let block = web3.get_block(block_number)).await;
 ### Deploy a Contract
 
 ```rust
-use web3::account::get_all_accounts;
 use web3::contract::deploy;
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
@@ -80,14 +78,46 @@ let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/R
 let tx_hash = web3.deploy(account, &contract).await;
 ```
 
+### Get Contract Code
+
+```rust
+use web3::contract::{code, deploy};
+
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
+let tx_hash = web3.deploy(account, &contract).await.unwrap();
+let receipt = web3.transaction_receipt(tx_hash).await.unwrap();
+let code = web3.code(receipt.contract_address.unwrap(), None).await;
+```
+
 ## Transactions
 
 ### Send a Transaction
 
 ```rust
 use types::transaction::TransactionRequest;
-use web3::account::get_all_accounts;
-use web3::transaction::send;
+
+let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let from = web3.get_all_accounts().await.unwrap()[0];
+let to = web3.get_all_accounts().await.unwrap()[1];
+let gas = U256::from(1_000_000);
+let gas_price = U256::from(1);
+let data = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
+let transaction_request = TransactionRequest {
+    from: None,
+    to: Some(to),
+    value: None,
+    gas,
+    gas_price,
+    data: Some(data.into()),
+};
+let tx_hash = web3.send(transaction_request).await;
+```
+
+### Get a Transaction Receipt
+
+```rust
+use types::transaction::TransactionRequest;
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 let from = web3.get_all_accounts().await.unwrap()[0];
@@ -104,6 +134,7 @@ let transaction_request = TransactionRequest {
     data: Some(data.into()),
     };
 let tx_hash = web3.send(transaction_request).await;
+let receipt = web3.transaction_receipt(tx_hash).await;
 ```
 
 ## Other Work

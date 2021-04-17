@@ -65,6 +65,7 @@ impl From<i32> for BlockNumber {
     }
 }
 
+// TODO: replace the custom code below with serde_with's hex macros
 impl TryFrom<String> for BlockNumber {
     type Error = TypeError;
 
@@ -74,17 +75,14 @@ impl TryFrom<String> for BlockNumber {
     }
 }
 
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Block {
     pub number: U64,
     pub hash: Secret,
-    #[serde(rename = "parentHash")]
     pub parent_hash: Secret,
-    #[serde(rename = "miner")]
-    pub author: Address,
-    #[serde(rename = "gasUsed")]
+    pub miner: Address,
     pub gas_used: U256,
-    #[serde(rename = "gasLimit")]
     pub gas_limit: U256,
     pub difficulty: U256,
     pub transactions: Vec<Transaction>,

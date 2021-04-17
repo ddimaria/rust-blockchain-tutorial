@@ -24,8 +24,6 @@ impl Web3 {
     /// # Examples
     ///
     /// ```ignore
-    /// use web3::account::get_all_accounts;
-    ///
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     /// let all_accounts = web3.get_all_accounts().await;
     /// assert!(all_accounts.is_ok());
@@ -44,8 +42,6 @@ impl Web3 {
     /// # Examples
     ///
     /// ```ignore
-    /// use web3::account::{get_all_accounts, get_balance};
-    ///
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     /// let account = web3.get_all_accounts().await.unwrap()[0].clone();
     /// let balance = web3.get_balance(account).await;
@@ -65,8 +61,6 @@ impl Web3 {
     ///
     /// ```ignore
     /// use types::block::BlockNumber;
-    /// use web3::account::{get_all_accounts, get_balance_by_block};
-    ///
     /// let block = BlockNumber(0.into());
     /// let account = web3.get_all_accounts().await.unwrap()[0];
     /// let balance = web3.get_balance_by_block(account, Some(block)).await;
@@ -77,10 +71,7 @@ impl Web3 {
         address: Account,
         block_number: Option<BlockNumber>,
     ) -> Result<U256> {
-        let block_number = block_number.map_or_else(
-            || "latest".to_string(),
-            |block_number| to_hex(*block_number),
-        );
+        let block_number = Web3::get_hex_blocknumber(block_number);
         let params = Params::Array(vec![
             Value::String(to_hex(address)),
             Value::String(block_number),

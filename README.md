@@ -15,7 +15,7 @@ The goal will be to build out some of the most used endpoints.
 
 ### Types
 
-The [types](types) crate is holds shared types to be use by the other crates.
+The [types](types) crate is holds shared types to be used by the other crates.
 
 ### Client
 

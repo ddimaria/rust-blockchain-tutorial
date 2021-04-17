@@ -18,6 +18,8 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
     }
 }
 
+// TODO: replace the custom code below with serde_with's hex macros
+
 // Convert Bytes to hex when serializing
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -16,6 +16,16 @@ use crate::error::Result;
 use crate::Web3;
 
 impl Web3 {
+    /// Utility function for unwrapping an optional BlockNumber.
+    /// If the Option is Some, convert it to a hex string.
+    /// If the Option is None, use "latest".
+    pub(crate) fn get_hex_blocknumber(block_number: Option<BlockNumber>) -> String {
+        block_number.map_or_else(
+            || "latest".to_string(),
+            |block_number| to_hex(*block_number),
+        )
+    }
+
     /// Retrieve the block number of the current block.
     ///
     /// See https://eth.wiki/json-rpc/API#eth_blockNumber
@@ -23,8 +33,6 @@ impl Web3 {
     /// # Examples
     ///
     /// ```ignore
-    /// use web3::block::get_block_number;
-    ///
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     /// let block_number = web3.get_block_number()).await;
     /// assert!(block_number.is_ok());
@@ -43,8 +51,6 @@ impl Web3 {
     /// # Examples
     ///
     /// ```ignore
-    /// use web3::block::get_block;
-    ///
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     /// let block_number = U64::from(0);
     /// let block = web3.get_block(block_number)).await;
@@ -59,33 +65,6 @@ impl Web3 {
         Ok(result)
     }
 }
-
-/*
-sample block from the chain
-Object({
-    "difficulty": String("0x0"),
-    "extraData": String("0x"),
-    "gasLimit": String("0x6691b7"),
-    "gasUsed": String("0x0"),
-    "hash": String("0x7a2b18ecb9565eaa511601130d8108886b5d9cb14c6f9662c1e661bbfc73523e"),
-    "logsBloom": String("0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-    "miner": String("0x0000000000000000000000000000000000000000"),
-    "mixHash": String("0x0000000000000000000000000000000000000000000000000000000000000000"),
-    "nonce": String("0x0000000000000000"),
-    "number": String("0x0"),
-    "parentHash": String("0x0000000000000000000000000000000000000000000000000000000000000000"),
-    "receiptsRoot": String("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
-    "sha3Uncles": String("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-    "size": String("0x3e8"),
-    "stateRoot": String("0xd5b2d8fdfe99430dcdaa397d252d0cae3a1457c414999fbba318ba90ec0ed56b"),
-    "timestamp": String("0x60367687"),
-    "totalDifficulty": String("0x0"),
-    "transactions": Array([]),
-    "transactionsRoot": String("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
-    "uncles": Array([])
-})
-
-*/
 
 #[cfg(test)]
 mod tests {

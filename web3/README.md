@@ -37,8 +37,6 @@ Ok(
 ### Get Account Balance
 
 ```rust
-use web3::account::{get_all_accounts, get_balance};
-
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let account = web3.get_all_accounts().await?[0].clone();
 let balance = web3.get_balance(account).await;

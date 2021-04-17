@@ -9,7 +9,7 @@ This crate interacts with the Hardhat chain in the [contracts](../contracts) dir
 ## Create a Web3 Instance
 
 ```rust
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 ```
 
 ## Accounts
@@ -18,7 +18,7 @@ let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
 
 ```rust
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let all_accounts = web3.get_all_accounts().await;
 ```
 
@@ -27,8 +27,8 @@ let all_accounts = web3.get_all_accounts().await;
 ```rust
 use web3::account::{get_all_accounts, get_balance};
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let account = web3.get_all_accounts().await.unwrap()[0].clone();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let account = web3.get_all_accounts().await?[0].clone();
 let balance = web3.get_balance(account).await;
 ```
 
@@ -38,9 +38,9 @@ let balance = web3.get_balance(account).await;
 use types::block::BlockNumber;
 use web3::account::{get_all_accounts, get_balance_by_block};
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block = BlockNumber(0.into());
-let account = web3.get_all_accounts().await.unwrap()[0];
+let account = web3.get_all_accounts().await?[0];
 let balance = web3.get_balance_by_block(account, Some(block)).await;
 ```
 
@@ -51,7 +51,7 @@ let balance = web3.get_balance_by_block(account, Some(block)).await;
 ```rust
 use web3::block::get_block_number;
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block_number = web3.get_block_number()).await;
 ```
 
@@ -60,7 +60,7 @@ let block_number = web3.get_block_number()).await;
 ```rust
 use web3::block::get_block;
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block_number = U64::from(0);
 let block = web3.get_block(block_number)).await;
 ```
@@ -72,8 +72,8 @@ let block = web3.get_block(block_number)).await;
 ```rust
 use web3::contract::deploy;
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let account = web3.get_all_accounts().await.unwrap()[0];
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let account = web3.get_all_accounts().await?[0];
 let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
 let tx_hash = web3.deploy(account, &contract).await;
 ```
@@ -83,11 +83,11 @@ let tx_hash = web3.deploy(account, &contract).await;
 ```rust
 use web3::contract::{code, deploy};
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
-let tx_hash = web3.deploy(account, &contract).await.unwrap();
-let receipt = web3.transaction_receipt(tx_hash).await.unwrap();
-let code = web3.code(receipt.contract_address.unwrap(), None).await;
+let tx_hash = web3.deploy(account, &contract).await?;
+let receipt = web3.transaction_receipt(tx_hash).await?;
+let code = web3.code(receipt.contract_address?, None).await;
 ```
 
 ## Transactions
@@ -97,9 +97,9 @@ let code = web3.code(receipt.contract_address.unwrap(), None).await;
 ```rust
 use types::transaction::TransactionRequest;
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let from = web3.get_all_accounts().await.unwrap()[0];
-let to = web3.get_all_accounts().await.unwrap()[1];
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let from = web3.get_all_accounts().await?[0];
+let to = web3.get_all_accounts().await?[1];
 let gas = U256::from(1_000_000);
 let gas_price = U256::from(1);
 let data = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
@@ -119,9 +119,9 @@ let tx_hash = web3.send(transaction_request).await;
 ```rust
 use types::transaction::TransactionRequest;
 
-let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-let from = web3.get_all_accounts().await.unwrap()[0];
-let to = web3.get_all_accounts().await.unwrap()[1];
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let from = web3.get_all_accounts().await?[0];
+let to = web3.get_all_accounts().await?[1];
 let gas = U256::from(1_000_000);
 let gas_price = U256::from(1);
 let data = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();

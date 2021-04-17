@@ -25,11 +25,13 @@ let all_accounts = web3.get_all_accounts().await;
 ##### Response
 
 ```rust
-Ok([
-  0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
-  0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
-  0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
-])
+Ok(
+    [
+      0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
+      0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
+      0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
+    ]
+)
 ```
 
 ### Get Account Balance
@@ -98,26 +100,48 @@ let block = web3.get_block(block_number)).await;
 ```rust
 Ok(
     Block {
-        number: 5,
-        hash: 0xe26f60d2346a76f6d926efd4816e33fc5c02e0860489f5ace6de1f757a7450cd,
-        parent_hash: 0x7bb51b5d04d6af8e129f6d519f3d3c406035c75ffd19d983bd30a7f667349c62,
-        miner: 0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e,
-        gas_used: 0,
-        gas_limit: 9500000,
-        difficulty: 131072,
-        transactions: [
-            Transaction {
-                from: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
-                to: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
-                value: 0,
-                nonce: 4,
-                hash: 0x8f3dee8702e39d1de5e249e7e340ae66ec82710ff9d398ebfd477b1256611e5e,
-                gas: 1000000,
-                gas_price: 8000000000,
-                data: None,
-            },
-        ],
-    },
+      hash: 0x43bf92a90221d68aa5bfd1ad65b3d3ace2c97b5783a358b30ac3304820310751,
+      parent_hash: 0x41d5898f86a439d5ec116965cdbc090f1a2bdf6b76465a8832455b9de0569898,
+      sha3_uncles: 0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347,
+      miner: 0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e,
+      state_root: 0x82e2ebb959aa35579c6224777a3f563717ed006afd4a3ad4bd14d28d92efbfeb,
+      transactions_root: 0xfbeeb53cdce587225bea5716e91b2f4c2d034b812505ae8ac400e80f4161ae10,
+      receipts_root: 0x969a8cd0591bceb012fea9973b866ea96b5aa14fc8d9cae7ba1757b6fba34f95,
+      number: 38,
+      gas_used: 0,
+      gas_limit: 9500000,
+      logs_bloom: Some(
+          0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+      ),
+      timestamp: 1618659703,
+      difficulty: 131264,
+      total_difficulty: Some(
+          4984321,
+      ),
+      seal_fields: None,
+      uncles: [],
+      transactions: [
+          Transaction {
+              from: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
+              to: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
+              value: 0,
+              nonce: 37,
+              hash: 0x72d0f35eec01aad910af8a923bf256c7a198aa6ee117221bed6078f5fb8cc760,
+              gas: 1000000,
+              gas_price: 8000000000,
+              data: None,
+          },
+      ],
+      size: Some(
+          26027,
+      ),
+      mix_hash: Some(
+          0x0000000000000000000000000000000000000000000000000000000000000000,
+      ),
+      nonce: Some(
+          0x0000000000000042,
+      ),
+  }
 )
 ```
 

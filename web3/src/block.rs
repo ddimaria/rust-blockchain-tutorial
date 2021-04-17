@@ -61,6 +61,7 @@ impl Web3 {
         let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
         let response = self.send_rpc("eth_getBlockByNumber", Some(params)).await?;
         let block: Block = serde_json::from_value(response)?;
+        println!("{:#?}", block);
 
         Ok(block)
     }
@@ -68,7 +69,6 @@ impl Web3 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::tests::web3;
 
     #[tokio::test]
@@ -78,8 +78,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn it_gets_the_zero_block() {
-        let response = web3().get_block(U64::from(0)).await;
+    async fn it_gets_the_latest_block() {
+        let block_number = web3().get_block_number().await.unwrap();
+        let response = web3().get_block(*block_number).await;
+        println!("{:?}", response);
         assert!(response.is_ok());
     }
 }

@@ -29,16 +29,7 @@ impl Web3 {
     }
 
     /// Create a new HTTP JSON-RPC client with given url.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use web3::request::get_client;
-    ///
-    /// let client = get_client();
-    /// assert!(client.is_ok());
-    /// ```
-    pub fn get_client(url: &str) -> Result<HttpClient> {
+    fn get_client(url: &str) -> Result<HttpClient> {
         HttpClient::new(url).map_err(|e| Web3Error::ClientError(e.to_string()))
     }
 
@@ -47,19 +38,21 @@ impl Web3 {
     /// # Examples
     ///
     /// ```ignore
-    /// use web3::request::send_rpc;
+    /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     ///
-    /// let response = send_rpc("eth_blockNumber", None).await;
+    /// let response = web3.send_rpc("eth_blockNumber", None).await;
     /// assert!(response.is_ok());
     /// ```
     pub async fn send_rpc(&self, method: &str, params: Option<Params>) -> Result<Value> {
-        debug!("Sending {} with params {:?}", method, params);
+        trace!("Sending RPC {} with params {:?}", method, params);
 
         let response = self
             .client
             .request(method, params)
             .await
             .map_err(|e| Web3Error::RpcRequestError(e.to_string()))?;
+
+        trace!("RPC Response {:?}", response);
 
         match response {
             Output::Success(s) => Ok(s.result),

@@ -33,11 +33,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use ethereum_types::{Address, Secret, U256, U64};
+use ethereum_types::{Address, Bloom, Secret, H64, U256, U64};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ops::Deref;
 
+use crate::bytes::Bytes;
 use crate::error::{Result, TypeError};
 use crate::helpers::hex_to_u64;
 use crate::transaction::Transaction;
@@ -78,12 +79,25 @@ impl TryFrom<String> for BlockNumber {
 #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Block {
-    pub number: U64,
-    pub hash: Secret,
-    pub parent_hash: Secret,
-    pub miner: Address,
-    pub gas_used: U256,
-    pub gas_limit: U256,
     pub difficulty: U256,
+    // pub extra_data: Bytes,
+    pub gas_limit: U256,
+    pub gas_used: U256,
+    pub hash: Secret,
+    pub logs_bloom: Option<Bloom>,
+    pub miner: Address,
+    pub mix_hash: Option<Secret>,
+    pub nonce: Option<H64>,
+    pub number: U64,
+    pub parent_hash: Secret,
+    pub receipts_root: Secret,
+    pub seal_fields: Option<Vec<Bytes>>,
+    pub sha3_uncles: Secret,
+    pub size: Option<U256>,
+    pub state_root: Secret,
+    pub timestamp: U256,
+    pub total_difficulty: Option<U256>,
     pub transactions: Vec<Transaction>,
+    pub transactions_root: Secret,
+    pub uncles: Vec<Secret>,
 }

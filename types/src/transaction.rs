@@ -15,6 +15,7 @@ use serde_with::skip_serializing_none;
 use crate::block::BlockNumber;
 use crate::bytes::Bytes;
 
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Transaction {
     pub from: Address,

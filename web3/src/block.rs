@@ -60,9 +60,9 @@ impl Web3 {
         let block_number = to_hex(block_number);
         let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
         let response = self.send_rpc("eth_getBlockByNumber", Some(params)).await?;
-        let result: Block = serde_json::from_value(response)?;
+        let block: Block = serde_json::from_value(response)?;
 
-        Ok(result)
+        Ok(block)
     }
 }
 

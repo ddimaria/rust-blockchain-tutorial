@@ -1,4 +1,4 @@
-# Rust Blockchain Rutorial
+# Rust Blockchain Tutorial
 
 _WORK IN PROGRESS_
 

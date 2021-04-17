@@ -54,7 +54,6 @@ Ok(9999870002304000000000)
 
 ```rust
 use types::block::BlockNumber;
-use web3::account::{get_all_accounts, get_balance_by_block};
 
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block = BlockNumber(0.into());
@@ -73,8 +72,6 @@ Ok(9999870002304000000000)
 ### Get Current Block Number
 
 ```rust
-use web3::block::get_block_number;
-
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block_number = web3.get_block_number()).await;
 ```
@@ -88,8 +85,6 @@ Ok(BlockNumber(42))
 ### Retrieve a Block
 
 ```rust
-use web3::block::get_block;
-
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let block_number = U64::from(42);
 let block = web3.get_block(block_number)).await;
@@ -150,8 +145,6 @@ Ok(
 ### Deploy a Contract
 
 ```rust
-use web3::contract::deploy;
-
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let account = web3.get_all_accounts().await?[0];
 let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
@@ -167,8 +160,6 @@ Ok(0x5581416b14f1cffae922ae5507528e8e6d3066c06bd8e8553f90cd2f45c21cc0)
 ### Get Contract Code
 
 ```rust
-use web3::contract::{code, deploy};
-
 let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
 let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
 let tx_hash = web3.deploy(account, &contract).await?;

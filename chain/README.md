@@ -2,6 +2,8 @@
 
 _NOTE: not for use in production_
 
+This crate is a simplistic ethereum blockchain. The goal is to implement major features to fully integrate with the [web3](../web3) crate.
+
 ## Start a Chain Node
 
 ```shell

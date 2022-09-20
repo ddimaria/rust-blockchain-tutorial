@@ -25,11 +25,11 @@ let balance = web3.get_balance(all_accounts[0]).await;
 let block_number = web3.get_block_number().await?;
 let block = web3.get_block(*block_number).await?;
 
-let to = all_accounts[0]
-let contract = include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
+let contract =
+    include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
 let tx_hash = web3.deploy(all_accounts[0], &contract).await?;
 let receipt = web3.transaction_receipt(tx_hash).await?;
-let code = web3.code(receipt.contract_address.unwrap(), None).await;
+let code = web3.code(receipt.contract_address.unwrap(), None).await?;
 ```
 
 More information can be found in the web3 [README](web3).

@@ -76,8 +76,8 @@ impl TryFrom<String> for BlockNumber {
     }
 }
 
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct Block {
     pub difficulty: U256,
     // pub extra_data: Bytes,

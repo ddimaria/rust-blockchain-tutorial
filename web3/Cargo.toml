@@ -1,8 +1,8 @@
 [package]
-name = "blockchain"
+name = "web3"
 version = "0.1.0"
 authors = ["David DiMaria <info@collectivesessions.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 async-jsonrpc-client = "0.3.0"

@@ -34,6 +34,10 @@ let code = web3.code(receipt.contract_address.unwrap(), None).await;
 
 More information can be found in the web3 [README](web3).
 
+### Chain
+
+The [chain](chain) crate is a simplistic ethereum blockchain. The goal it to implement major features to fully integrate with the [web3](web3) crate.
+
 ### Types
 
 The [types](types) crate is holds shared types to be used by the other crates.

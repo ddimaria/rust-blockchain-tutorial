@@ -15,8 +15,8 @@ use serde_with::skip_serializing_none;
 use crate::block::BlockNumber;
 use crate::bytes::Bytes;
 
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct Transaction {
     pub data: Option<Bytes>,
     pub from: Address,
@@ -29,8 +29,8 @@ pub struct Transaction {
 }
 
 #[skip_serializing_none]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct TransactionRequest {
     pub data: Option<Bytes>,
     pub gas: U256,
@@ -40,8 +40,8 @@ pub struct TransactionRequest {
     pub value: Option<U256>,
 }
 
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct TransactionReceipt {
     pub block_hash: Option<H256>,
     pub block_number: Option<BlockNumber>,
@@ -56,8 +56,8 @@ pub struct TransactionReceipt {
     pub transaction_index: String,
 }
 
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct Log {
     pub address: H160,
     pub block_hash: Option<H256>,

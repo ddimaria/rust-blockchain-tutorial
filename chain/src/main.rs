@@ -5,21 +5,23 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-mod chain;
+mod account;
+mod block;
+mod blockchain;
 mod error;
 mod helpers;
 mod method;
 mod server;
-mod state;
+mod transaction;
 
+use blockchain::BlockChain;
 use error::Result;
 use server::serve;
-use state::State;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let state = State::new();
-    let _server = serve("127.0.0.1:8545", state).await?;
+    let blockchain = BlockChain::new();
+    let _server = serve("127.0.0.1:8545", blockchain).await?;
 
     // create a future that never resolves
     futures::future::pending().await

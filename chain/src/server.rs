@@ -12,13 +12,13 @@ use std::{env, net::SocketAddr};
 use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
 
 use crate::{
+    blockchain::BlockChain,
     error::Result,
     method::{eth_accounts, eth_getBalance},
-    state::State,
 };
 
 // jsonrpsee requires static lifetimes for state
-pub(crate) async fn serve(addr: &str, state: State) -> Result<HttpServerHandle> {
+pub(crate) async fn serve(addr: &str, blockchain: BlockChain) -> Result<HttpServerHandle> {
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info")
     }
@@ -27,7 +27,7 @@ pub(crate) async fn serve(addr: &str, state: State) -> Result<HttpServerHandle> 
 
     let addrs = addr.parse::<SocketAddr>()?;
     let server = HttpServerBuilder::default().build(addrs).await?;
-    let mut module = RpcModule::new(state);
+    let mut module = RpcModule::new(blockchain);
 
     eth_accounts(&mut module)?;
     eth_getBalance(&mut module)?;
@@ -45,15 +45,15 @@ pub mod tests {
     use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
     use types::account::Account;
 
-    use crate::state::AccountData;
+    use crate::account::AccountData;
 
     use super::*;
 
     static ADDRESS: &'static str = "127.0.0.1:8545";
 
-    pub(crate) async fn server(state: Option<State>) -> HttpServerHandle {
-        let state = state.unwrap_or_else(|| State::new());
-        serve(ADDRESS, state).await.unwrap()
+    pub(crate) async fn server(blockchain: Option<BlockChain>) -> HttpServerHandle {
+        let blockchain = blockchain.unwrap_or_else(|| BlockChain::new());
+        serve(ADDRESS, blockchain).await.unwrap()
     }
 
     pub(crate) fn client() -> HttpClient {
@@ -63,10 +63,10 @@ pub mod tests {
 
     #[tokio::test]
     async fn creates_a_server() {
-        let state = State::new();
+        let blockchain = BlockChain::new();
         let account_data = AccountData::new("123".into());
-        let id = state.add_account(account_data);
-        let _server = server(Some(state)).await;
+        let id = blockchain.add_account(account_data);
+        let _server = server(Some(blockchain)).await;
         let response: Vec<Account> = client().request("eth_accounts", None).await.unwrap();
 
         assert_eq!(response, vec!(id));

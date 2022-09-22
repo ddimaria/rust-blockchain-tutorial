@@ -5,6 +5,7 @@ authors = ["David DiMaria <info@collectivesessions.com>"]
 edition = "2021"
 
 [dependencies]
+blake2 = "0.10.4"
 dashmap = { version = "5.4.0", features = ["rayon", "serde"] }
 ethereum-types = "0.10.0"
 futures = "0.3"

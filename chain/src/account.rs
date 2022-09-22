@@ -1,14 +1,8 @@
-//! # State
-//!
-//! Shared state in the server.
-//! JsonRpsee requires static lifetimes for state.
-
-////////////////////////////////////////////////////////////////////////////////
-
-use dashmap::DashMap;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 use types::account::Account;
+
+use crate::blockchain::BlockChain;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub(crate) struct AccountData {
@@ -25,18 +19,7 @@ impl AccountData {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub(crate) struct State {
-    accounts: DashMap<Account, AccountData>,
-}
-
-impl State {
-    pub(crate) fn new() -> Self {
-        Self {
-            accounts: DashMap::new(),
-        }
-    }
-
+impl BlockChain {
     pub(crate) fn add_account(&self, data: AccountData) -> Account {
         let key = Account::random();
         if !self.accounts.contains_key(&key) {

@@ -5,24 +5,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use jsonrpsee::RpcModule;
-use types::account::Account;
+use types::{account::Account, transaction::TransactionRequest};
 
-use crate::{error::Result, state::State};
+use crate::{blockchain::BlockChain, error::Result};
 
-pub(crate) fn eth_accounts(module: &mut RpcModule<State>) -> Result<()> {
-    module.register_method("eth_accounts", |_, state| {
-        let accounts = state.get_all_accounts();
+pub(crate) fn eth_accounts(module: &mut RpcModule<BlockChain>) -> Result<()> {
+    module.register_method("eth_accounts", |_, blockchain| {
+        let accounts = blockchain.get_all_accounts();
         Ok(accounts)
     })?;
 
     Ok(())
 }
 
-pub(crate) fn eth_getBalance(module: &mut RpcModule<State>) -> Result<()> {
-    module.register_method("eth_getBalance", move |params, state| {
+pub(crate) fn eth_getBalance(module: &mut RpcModule<BlockChain>) -> Result<()> {
+    module.register_method("eth_getBalance", move |params, blockchain| {
         let key = params.one::<Account>()?;
-        let account = state.get_account_balance(&key);
+        let account = blockchain.get_account_balance(&key);
         Ok(account)
+    })?;
+
+    Ok(())
+}
+
+pub(crate) fn eth_sendTransaction(module: &mut RpcModule<BlockChain>) -> Result<()> {
+    module.register_method("eth_sendTransaction", move |params, mut blockchain| {
+        let transaction_request = params.parse::<TransactionRequest>()?;
+        let transaction_hash = blockchain.send_transaction(&transaction_request);
+        Ok(transaction_hash)
     })?;
 
     Ok(())
@@ -34,14 +44,15 @@ pub mod tests {
     use types::account::Account;
 
     use super::*;
-    use crate::state::AccountData;
+    use crate::account::AccountData;
+    use crate::blockchain::BlockChain;
 
     #[tokio::test]
     async fn gets_all_accounts() {
-        let state = State::new();
+        let blockchain = BlockChain::new();
         let account_data = AccountData::new("123".into());
-        let id = state.add_account(account_data);
-        let mut module = RpcModule::new(state);
+        let id = blockchain.add_account(account_data);
+        let mut module = RpcModule::new(blockchain);
         eth_accounts(&mut module).unwrap();
         let response: Vec<Account> = module
             .call("eth_accounts", EmptyParams::new())
@@ -53,11 +64,11 @@ pub mod tests {
 
     #[tokio::test]
     async fn gets_an_account_balance() {
-        let state = State::new();
+        let blockchain = BlockChain::new();
         let account_data = AccountData::new("123".into());
         let tokens = account_data.tokens;
-        let id = state.add_account(account_data);
-        let mut module = RpcModule::new(state);
+        let id = blockchain.add_account(account_data);
+        let mut module = RpcModule::new(blockchain);
         eth_getBalance(&mut module).unwrap();
         let response: u64 = module.call("eth_getBalance", [id]).await.unwrap();
 

@@ -8,7 +8,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use ethereum_types::{Address, Bloom, Secret, H160, H256, U256, U64};
+use ethereum_types::{Address, Bloom, H160, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -22,7 +22,17 @@ pub struct Transaction {
     pub from: Address,
     pub gas: U256,
     pub gas_price: U256,
-    pub hash: Secret,
+    pub hash: H256,
+    pub nonce: U256,
+    pub to: Address,
+    pub value: U256,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+pub struct SimpleTransaction {
+    pub from: Address,
+    pub hash: Option<H256>,
     pub nonce: U256,
     pub to: Address,
     pub value: U256,

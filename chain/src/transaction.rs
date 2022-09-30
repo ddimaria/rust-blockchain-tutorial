@@ -1,34 +1,43 @@
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H256, U256};
+use proc_macros::NewType;
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::convert::From;
-use std::ops::{Deref, DerefMut};
 use std::string::String;
 use types::account::Account;
 use types::bytes::Bytes;
 use types::transaction::{SimpleTransaction, TransactionRequest};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, NewType)]
 pub(crate) struct Transaction(SimpleTransaction);
-
-// Deref and DerefMut make working with newtypes easy
-impl Deref for Transaction {
-    type Target = SimpleTransaction;
-
-    fn deref(&self) -> &SimpleTransaction {
-        &self.0
-    }
-}
-
-impl DerefMut for Transaction {
-    fn deref_mut(&mut self) -> &mut SimpleTransaction {
-        &mut self.0
-    }
-}
 
 impl From<&TransactionRequest> for Transaction {
     fn from(value: &TransactionRequest) -> Transaction {
         Transaction::new(value.from.unwrap(), value.to.unwrap(), value.value.unwrap())
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct TransactionStorage {
+    pub(crate) transactions: VecDeque<Transaction>,
+}
+
+impl TransactionStorage {
+    pub(crate) fn new() -> Self {
+        Self {
+            transactions: VecDeque::new(),
+        }
+    }
+
+    pub(crate) fn send_transaction(&self, transaction_request: &TransactionRequest) -> H256 {
+        // TODO: add to mempool instead
+        let transaction: Transaction = transaction_request.into();
+        let hash = transaction.hash.unwrap();
+
+        // self.transactions.push_back(transaction);
+
+        hash
     }
 }
 
@@ -72,6 +81,6 @@ mod tests {
     #[tokio::test]
     async fn creates_a_transaction() {
         let transaction = new_transaction();
-        println!("{:?}", transaction);
+        // println!("{:?}", transaction);
     }
 }

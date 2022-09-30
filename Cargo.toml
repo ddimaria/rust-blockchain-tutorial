@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "chain",
+    "proc_macros",
     "types",
     "web3",
 ]

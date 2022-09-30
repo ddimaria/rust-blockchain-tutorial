@@ -7,12 +7,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use jsonrpsee::core::Error as JsonRpseeError;
-use std::net::AddrParseError;
+use std::{
+    net::AddrParseError,
+    sync::{MutexGuard, PoisonError},
+};
 use thiserror::Error;
 use tracing_subscriber::{
     filter::{FromEnvError, ParseError as TracingParseError},
     util::TryInitError as TracingTryInitError,
 };
+
+use crate::blockchain;
 
 #[derive(Error, Debug)]
 pub enum ChainError {
@@ -64,6 +69,12 @@ impl From<TracingTryInitError> for ChainError {
 
 impl From<JsonRpseeError> for ChainError {
     fn from(error: JsonRpseeError) -> Self {
+        ChainError::JsonRpseeError(error.to_string())
+    }
+}
+
+impl<T> From<PoisonError<T>> for ChainError {
+    fn from(error: PoisonError<T>) -> Self {
         ChainError::JsonRpseeError(error.to_string())
     }
 }

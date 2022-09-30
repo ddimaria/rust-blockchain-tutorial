@@ -6,27 +6,12 @@
 
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H256, H64, U64};
+use proc_macros::NewType;
 use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
 use types::{block::SimpleBlock, transaction::SimpleTransaction};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, NewType)]
 pub(crate) struct Block(SimpleBlock);
-
-// Deref and DerefMut make working with newtypes easy
-impl Deref for Block {
-    type Target = SimpleBlock;
-
-    fn deref(&self) -> &SimpleBlock {
-        &self.0
-    }
-}
-
-impl DerefMut for Block {
-    fn deref_mut(&mut self) -> &mut SimpleBlock {
-        &mut self.0
-    }
-}
 
 impl Block {
     pub(crate) fn genesis() -> Self {
@@ -100,6 +85,6 @@ mod tests {
     async fn creates_a_block() {
         let blockchain = BlockChain::new();
         let block = new_block(&blockchain);
-        println!("{:?}", block);
+        // println!("{:?}", block);
     }
 }

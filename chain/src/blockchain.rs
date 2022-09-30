@@ -4,9 +4,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::account::AccountData;
+use std::collections::VecDeque;
+use std::sync::Arc;
+
+use crate::account::{AccountData, AccountStorage};
 use crate::block::Block;
-use crate::transaction::Transaction;
+use crate::server::Context;
+use crate::transaction::{Transaction, TransactionStorage};
 use blake2::{Blake2s256, Digest};
 use dashmap::DashMap;
 use ethereum_types::H256;
@@ -15,17 +19,17 @@ use types::transaction::{SimpleTransaction, TransactionRequest};
 
 #[derive(Debug)]
 pub(crate) struct BlockChain {
-    pub(crate) accounts: DashMap<Account, AccountData>,
+    pub(crate) accounts: AccountStorage,
     pub(crate) blocks: Vec<Block>,
-    pub(crate) mempool: Vec<Transaction>,
+    pub(crate) mempool: TransactionStorage,
 }
 
 impl BlockChain {
     pub(crate) fn new() -> Self {
         Self {
-            accounts: DashMap::new(),
+            accounts: AccountStorage::new(),
             blocks: vec![Block::genesis()],
-            mempool: vec![],
+            mempool: TransactionStorage::new(),
         }
     }
 
@@ -34,6 +38,7 @@ impl BlockChain {
     }
 
     pub(crate) fn new_block(&mut self, transactions: Vec<SimpleTransaction>) -> H256 {
+        // TODO(ddimaria): make this an atomic operation
         let current_block = self.get_current_block();
         let number = current_block.number + 1_u64;
         let parent_hash = current_block.hash.unwrap();
@@ -52,13 +57,6 @@ impl BlockChain {
         self.blocks.push(block);
 
         hash
-    }
-
-    pub(crate) fn send_transaction(&self, transaction_request: &TransactionRequest) -> H256 {
-        // TODO: add to mempool instead
-        let transaction: Transaction = transaction_request.into();
-
-        transaction.hash.unwrap()
     }
 }
 

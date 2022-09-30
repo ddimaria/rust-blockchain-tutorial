@@ -14,6 +14,8 @@ mod method;
 mod server;
 mod transaction;
 
+use std::sync::{Arc, Mutex};
+
 use blockchain::BlockChain;
 use error::Result;
 use server::serve;

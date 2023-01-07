@@ -28,7 +28,7 @@ impl Web3 {
     /// assert!(all_accounts.is_ok());
     /// ```
     pub async fn get_all_accounts(&self) -> Result<Vec<Account>> {
-        let response = self.send_rpc("eth_accounts", None).await?;
+        let response = self.send_rpc("eth_accounts", rpc_params![]).await?;
         let accounts: Vec<Account> = serde_json::from_value(response)?;
 
         Ok(accounts)
@@ -72,8 +72,7 @@ impl Web3 {
     ) -> Result<U256> {
         let block_number = Web3::get_hex_blocknumber(block_number);
         let params = rpc_params![to_hex(address), block_number];
-        println!("{:?}", params);
-        let response = self.send_rpc("eth_getBalance", params).await?;
+        let response = self.send_rpc("eth_getBalanceByBlock", params).await?;
         let balance: U256 = serde_json::from_value(response)?;
 
         Ok(balance)

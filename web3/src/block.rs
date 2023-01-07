@@ -8,7 +8,7 @@
 
 use ethereum_types::U64;
 use jsonrpsee::rpc_params;
-use types::block::{Block, BlockNumber};
+use types::block::{Block, BlockNumber, SimpleBlock};
 use types::helpers::to_hex;
 
 use crate::error::Result;
@@ -37,7 +37,7 @@ impl Web3 {
     /// assert!(block_number.is_ok());
     /// ```
     pub async fn get_block_number(&self) -> Result<BlockNumber> {
-        let response = self.send_rpc("eth_blockNumber", None).await?;
+        let response = self.send_rpc("eth_blockNumber", rpc_params![]).await?;
         let block_number: BlockNumber = serde_json::from_value(response)?;
 
         Ok(block_number)
@@ -55,11 +55,15 @@ impl Web3 {
     /// let block = web3.get_block(block_number)).await;
     /// assert!(block.is_ok());
     /// ```
-    pub async fn get_block(&self, block_number: U64) -> Result<Block> {
+    pub async fn get_block(&self, block_number: U64) -> Result<SimpleBlock> {
         let block_number = to_hex(block_number);
-        let params = rpc_params![block_number, true];
+        let params = rpc_params![block_number];
         let response = self.send_rpc("eth_getBlockByNumber", params).await?;
-        let block: Block = serde_json::from_value(response)?;
+        println!(
+            "{:?}",
+            serde_json::from_value::<SimpleBlock>(response.clone())
+        );
+        let block: SimpleBlock = serde_json::from_value(response)?;
 
         Ok(block)
     }

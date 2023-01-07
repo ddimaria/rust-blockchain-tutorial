@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use jsonrpsee::core::client::ClientT;
+use jsonrpsee::core::traits::ToRpcParams;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
-use jsonrpsee::types::ParamsSer;
 use log::*;
 use serde_json::Value;
 
@@ -44,10 +44,13 @@ impl Web3 {
     /// ```ignore
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     ///
-    /// let response = web3.send_rpc("eth_blockNumber", None).await;
+    /// let response = web3.send_rpc("eth_blockNumber", rpc_params![]).await;
     /// assert!(response.is_ok());
     /// ```
-    pub async fn send_rpc<'a>(&self, method: &str, params: Option<ParamsSer<'a>>) -> Result<Value> {
+    pub async fn send_rpc<Params>(&self, method: &str, params: Params) -> Result<Value>
+    where
+        Params: ToRpcParams + Send + std::fmt::Debug,
+    {
         trace!("Sending RPC {} with params {:?}", method, params);
 
         let response = self

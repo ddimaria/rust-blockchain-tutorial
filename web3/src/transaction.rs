@@ -6,8 +6,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::Params;
 use ethereum_types::H256;
+use jsonrpsee::rpc_params;
 use serde_json::to_value;
 use types::transaction::{TransactionReceipt, TransactionRequest};
 
@@ -42,8 +42,8 @@ impl Web3 {
     /// ```
     pub async fn send(&self, transaction_request: TransactionRequest) -> Result<H256> {
         let transaction_request = to_value(&transaction_request)?;
-        let params = Params::Array(vec![transaction_request]);
-        let response = self.send_rpc("eth_sendTransaction", Some(params)).await?;
+        let params = rpc_params![transaction_request];
+        let response = self.send_rpc("eth_sendTransaction", params).await?;
         let tx_hash: H256 = serde_json::from_value(response)?;
 
         Ok(tx_hash)
@@ -77,10 +77,8 @@ impl Web3 {
     /// ```
     pub async fn transaction_receipt(&self, tx_hash: H256) -> Result<TransactionReceipt> {
         let tx_hash = to_value(&tx_hash)?;
-        let params = Params::Array(vec![tx_hash]);
-        let response = self
-            .send_rpc("eth_getTransactionReceipt", Some(params))
-            .await?;
+        let params = rpc_params![tx_hash];
+        let response = self.send_rpc("eth_getTransactionReceipt", params).await?;
         let receipt: TransactionReceipt = serde_json::from_value(response)?;
 
         Ok(receipt)

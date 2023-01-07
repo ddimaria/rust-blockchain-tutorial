@@ -6,10 +6,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::Params;
 use ethereum_types::Address;
 use ethereum_types::{H256, U256};
-use serde_json::Value;
+use jsonrpsee::rpc_params;
 use types::block::BlockNumber;
 use types::bytes::Bytes;
 use types::helpers::to_hex;
@@ -66,11 +65,8 @@ impl Web3 {
         block_number: Option<BlockNumber>,
     ) -> Result<String> {
         let block_number = Web3::get_hex_blocknumber(block_number);
-        let params = Params::Array(vec![
-            Value::String(to_hex(address)),
-            Value::String(block_number),
-        ]);
-        let response = self.send_rpc("eth_getCode", Some(params)).await?;
+        let params = rpc_params![to_hex(address), block_number];
+        let response = self.send_rpc("eth_getCode", params).await?;
         let balance: String = serde_json::from_value(response)?;
 
         Ok(balance)

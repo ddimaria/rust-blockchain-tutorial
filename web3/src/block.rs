@@ -6,9 +6,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::Params;
 use ethereum_types::U64;
-use serde_json::Value;
+use jsonrpsee::rpc_params;
 use types::block::{Block, BlockNumber};
 use types::helpers::to_hex;
 
@@ -58,8 +57,8 @@ impl Web3 {
     /// ```
     pub async fn get_block(&self, block_number: U64) -> Result<Block> {
         let block_number = to_hex(block_number);
-        let params = Params::Array(vec![Value::String(block_number), Value::Bool(true)]);
-        let response = self.send_rpc("eth_getBlockByNumber", Some(params)).await?;
+        let params = rpc_params![block_number, true];
+        let response = self.send_rpc("eth_getBlockByNumber", params).await?;
         let block: Block = serde_json::from_value(response)?;
 
         Ok(block)

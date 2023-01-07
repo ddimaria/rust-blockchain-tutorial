@@ -6,9 +6,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::Params;
 use ethereum_types::U256;
-use serde_json::Value;
+use jsonrpsee::rpc_params;
 use types::account::Account;
 use types::block::BlockNumber;
 use types::helpers::to_hex;
@@ -72,12 +71,9 @@ impl Web3 {
         block_number: Option<BlockNumber>,
     ) -> Result<U256> {
         let block_number = Web3::get_hex_blocknumber(block_number);
-        let params = Params::Array(vec![
-            Value::String(to_hex(address)),
-            Value::String(block_number),
-        ]);
+        let params = rpc_params![to_hex(address), block_number];
         println!("{:?}", params);
-        let response = self.send_rpc("eth_getBalance", Some(params)).await?;
+        let response = self.send_rpc("eth_getBalance", params).await?;
         let balance: U256 = serde_json::from_value(response)?;
 
         Ok(balance)
@@ -113,6 +109,7 @@ mod tests {
         let response = web3()
             .get_balance_by_block(account, Some(BlockNumber(0.into())))
             .await;
+        println!("{:?}", response);
         assert!(response.is_ok());
     }
 }

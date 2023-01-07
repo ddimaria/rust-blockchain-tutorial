@@ -4,18 +4,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use std::collections::VecDeque;
-use std::sync::Arc;
-
-use crate::account::{AccountData, AccountStorage};
+use crate::account::AccountStorage;
 use crate::block::Block;
-use crate::server::Context;
-use crate::transaction::{Transaction, TransactionStorage};
+use crate::transaction::TransactionStorage;
 use blake2::{Blake2s256, Digest};
-use dashmap::DashMap;
 use ethereum_types::H256;
-use types::account::Account;
-use types::transaction::{SimpleTransaction, TransactionRequest};
+use types::transaction::SimpleTransaction;
 
 #[derive(Debug)]
 pub(crate) struct BlockChain {

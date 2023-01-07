@@ -66,7 +66,7 @@ impl From<i32> for BlockNumber {
     }
 }
 
-// TODO: replace the custom code below with serde_with's hex macros
+// TODO(ddimaria): replace the custom code below with serde_with's hex macros
 impl TryFrom<String> for BlockNumber {
     type Error = TypeError;
 

@@ -76,6 +76,7 @@ impl Web3 {
             Value::String(to_hex(address)),
             Value::String(block_number),
         ]);
+        println!("{:?}", params);
         let response = self.send_rpc("eth_getBalance", Some(params)).await?;
         let balance: U256 = serde_json::from_value(response)?;
 

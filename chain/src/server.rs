@@ -8,17 +8,14 @@ use jsonrpsee::{
     http_server::{HttpServerBuilder, HttpServerHandle},
     RpcModule,
 };
-use std::{
-    env,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{env, net::SocketAddr};
 use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
 
 use crate::{
     blockchain::BlockChain,
     error::Result,
-    method::{eth_accounts, eth_get_balance, eth_send_transaction},
+    logger::Logger,
+    method::{eth_accounts, eth_get_balance, eth_get_balance_by_block, eth_send_transaction},
 };
 
 pub(crate) type Context = BlockChain;
@@ -32,11 +29,16 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<HttpServerH
     FmtSubscriber::builder().finish().try_init()?;
 
     let addrs = addr.parse::<SocketAddr>()?;
-    let server = HttpServerBuilder::default().build(addrs).await?;
+    let server = HttpServerBuilder::default()
+        .set_middleware(Logger)
+        .build(addrs)
+        .await?;
     let mut module = RpcModule::new(blockchain);
 
+    // register methods
     eth_accounts(&mut module)?;
     eth_get_balance(&mut module)?;
+    eth_get_balance_by_block(&mut module)?;
     eth_send_transaction(&mut module)?;
 
     let server_handle = server.start(module)?;
@@ -51,18 +53,14 @@ pub mod tests {
     use jsonrpsee::core::client::ClientT;
     use types::account::Account;
 
-    use super::*;
-    use crate::account::AccountData;
-    use crate::helpers::tests::{client, server};
+    use crate::helpers::tests::{assert_vec_eq, client, server, setup};
 
     #[tokio::test]
     async fn creates_a_server() {
-        let blockchain = BlockChain::new();
-        let account_data = AccountData::new("123".into());
-        let id = blockchain.accounts.add_account(account_data);
+        let (blockchain, id_1, id_2) = setup();
         let _server = server(Some(blockchain)).await;
         let response: Vec<Account> = client().request("eth_accounts", None).await.unwrap();
 
-        assert_eq!(response, vec!(id));
+        assert_vec_eq(response, vec![id_1, id_2]);
     }
 }

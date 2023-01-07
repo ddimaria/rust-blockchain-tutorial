@@ -31,6 +31,7 @@ impl Block {
             parent_hash,
             transactions,
         });
+
         block.hash()
     }
 

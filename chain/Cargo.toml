@@ -10,7 +10,7 @@ dashmap = { version = "5.4.0", features = ["rayon", "serde"] }
 ethereum-types = "0.10.0"
 futures = "0.3"
 hyper = "0.14.10"
-jsonrpsee = { version = "0.15.1", features = ["full"] }
+jsonrpsee = { version = "0.15.1", features = ["full", "server"] }
 proc_macros = { path = "../proc_macros" }
 rayon = "1.5.3"
 serde_json = { version = "1.0", features = ["raw_value"] }

@@ -43,13 +43,15 @@ impl TransactionStorage {
 
 impl Transaction {
     pub(crate) fn new(from: Account, to: Account, value: U256) -> Self {
-        Self(SimpleTransaction {
+        let transaction = Self(SimpleTransaction {
             from,
             to,
             value,
             nonce: U256::zero(), // only one transaction per block for now
             hash: None,
-        })
+        });
+
+        transaction.hash()
     }
 
     pub(crate) fn serialize(&self) -> String {
@@ -75,7 +77,8 @@ mod tests {
         let from = Account::random();
         let to = Account::random();
         let value = U256::from(1u64);
-        Transaction::new(from, to, value).hash()
+
+        Transaction::new(from, to, value)
     }
 
     #[tokio::test]

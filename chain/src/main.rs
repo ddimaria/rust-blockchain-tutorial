@@ -10,19 +10,19 @@ mod block;
 mod blockchain;
 mod error;
 mod helpers;
+mod logger;
 mod method;
 mod server;
 mod transaction;
 
-use std::sync::{Arc, Mutex};
-
-use blockchain::BlockChain;
 use error::Result;
+use helpers::tests::setup;
 use server::serve;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let blockchain = BlockChain::new();
+    // TODO(ddimaria): remove
+    let (blockchain, _, _) = setup();
     let _server = serve("127.0.0.1:8545", blockchain).await?;
 
     // create a future that never resolves

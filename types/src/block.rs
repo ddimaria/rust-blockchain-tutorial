@@ -102,8 +102,8 @@ pub struct Block {
     pub uncles: Vec<H256>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct SimpleBlock {
     pub hash: Option<H256>,
     pub nonce: H256,

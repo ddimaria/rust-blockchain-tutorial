@@ -108,7 +108,6 @@ mod tests {
         let response = web3()
             .get_balance_by_block(account, Some(BlockNumber(0.into())))
             .await;
-        println!("{:?}", response);
         assert!(response.is_ok());
     }
 }

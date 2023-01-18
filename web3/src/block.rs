@@ -8,7 +8,7 @@
 
 use ethereum_types::U64;
 use jsonrpsee::rpc_params;
-use types::block::{Block, BlockNumber, SimpleBlock};
+use types::block::{BlockNumber, SimpleBlock};
 use types::helpers::to_hex;
 
 use crate::error::Result;
@@ -59,10 +59,6 @@ impl Web3 {
         let block_number = to_hex(block_number);
         let params = rpc_params![block_number];
         let response = self.send_rpc("eth_getBlockByNumber", params).await?;
-        println!(
-            "{:?}",
-            serde_json::from_value::<SimpleBlock>(response.clone())
-        );
         let block: SimpleBlock = serde_json::from_value(response)?;
 
         Ok(block)

@@ -34,9 +34,9 @@ impl Web3 {
         let gas_price = U256::from(1_000_000);
         let data: Bytes = abi.into();
         let transaction_request = TransactionRequest {
-            from: None,
+            from: Some(owner),
             to: Some(owner),
-            value: None,
+            value: Some(U256::zero()),
             gas,
             gas_price,
             data: Some(data),
@@ -75,6 +75,10 @@ impl Web3 {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use tokio::time::sleep;
+
     use super::*;
     use crate::helpers::tests::{get_contract, web3};
 
@@ -95,6 +99,10 @@ mod tests {
     async fn it_gets_a_contract_code() {
         let web3 = web3();
         let tx_hash = deploy_contract().await.unwrap();
+
+        // TODO(ddimaria): use polling or callbacks instead of waiting
+        sleep(Duration::from_millis(1000)).await;
+
         let receipt = web3.transaction_receipt(tx_hash).await.unwrap();
         let response = web3.code(receipt.contract_address.unwrap(), None).await;
         assert!(response.is_ok());

@@ -1,46 +1,60 @@
 use std::net::SocketAddr;
 use std::time::Instant;
 
-use jsonrpsee::core::middleware::{self, Headers, MethodKind, Params};
+use jsonrpsee::server::logger::{self, HttpRequest, MethodKind, Params, TransportProtocol};
 
 #[derive(Clone)]
 pub(crate) struct Logger;
 
-impl middleware::HttpMiddleware for Logger {
+impl logger::Logger for Logger {
     type Instant = Instant;
 
-    fn on_request(&self, remote_addr: SocketAddr, headers: &Headers) -> Self::Instant {
+    fn on_connect(&self, remote_addr: SocketAddr, request: &HttpRequest, _t: TransportProtocol) {
         tracing::info!(
-            "[Middleware::on_request] remote_addr {}, headers: {:?}",
+            "[Logger::on_connect] remote_addr {:?}, headers: {:?}",
             remote_addr,
-            headers
+            request
         );
+    }
+
+    fn on_request(&self, _t: TransportProtocol) -> Self::Instant {
+        tracing::info!("[Logger::on_request]");
         Instant::now()
     }
 
-    fn on_call(&self, name: &str, params: Params, kind: MethodKind) {
+    fn on_call(&self, name: &str, params: Params, kind: MethodKind, _t: TransportProtocol) {
         tracing::info!(
-            "[Middleware::on_call] method: '{}', params: {:?}, kind: {}",
+            "[Logger::on_call] method: '{}', params: {:?}, kind: {}",
             name,
             params,
             kind
         );
     }
 
-    fn on_result(&self, name: &str, succeess: bool, started_at: Self::Instant) {
+    fn on_result(
+        &self,
+        name: &str,
+        succeess: bool,
+        started_at: Self::Instant,
+        _t: TransportProtocol,
+    ) {
         tracing::info!(
-            "[Middleware::on_result] '{}', worked? {}, time elapsed {:?}",
+            "[Logger::on_result] '{}', worked? {}, time elapsed {:?}",
             name,
             succeess,
             started_at.elapsed()
         );
     }
 
-    fn on_response(&self, result: &str, started_at: Self::Instant) {
+    fn on_response(&self, result: &str, started_at: Self::Instant, _t: TransportProtocol) {
         tracing::info!(
-            "[Middleware::on_response] result: {}, time elapsed {:?}",
+            "[Logger::on_response] result: {}, time elapsed {:?}",
             result,
             started_at.elapsed()
         );
+    }
+
+    fn on_disconnect(&self, remote_addr: SocketAddr, _t: TransportProtocol) {
+        tracing::info!("[Logger::on_disconnect] remote_addr: {:?}", remote_addr);
     }
 }

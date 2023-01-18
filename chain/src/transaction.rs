@@ -1,54 +1,85 @@
+use crate::error::{ChainError, Result};
+
 use blake2::{Blake2s256, Digest};
-use ethereum_types::{H256, U256};
+use dashmap::mapref::one::Ref;
+use dashmap::DashMap;
+use ethereum_types::{H256, U256, U64};
 use proc_macros::NewType;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::convert::From;
 use std::string::String;
 use types::account::Account;
+use types::block::BlockNumber;
 use types::bytes::Bytes;
-use types::transaction::{SimpleTransaction, TransactionRequest};
+use types::transaction::{SimpleTransaction, SimpleTransactionReceipt};
 
 #[derive(Serialize, Deserialize, Debug, NewType)]
 pub(crate) struct Transaction(SimpleTransaction);
 
-impl From<&TransactionRequest> for Transaction {
-    fn from(value: &TransactionRequest) -> Transaction {
-        Transaction::new(value.from.unwrap(), value.to.unwrap(), value.value.unwrap())
+impl From<&Transaction> for SimpleTransactionReceipt {
+    fn from(value: &Transaction) -> SimpleTransactionReceipt {
+        SimpleTransactionReceipt {
+            block_hash: value.hash,
+            block_number: Some(BlockNumber(U64::zero())),
+            contract_address: Some(value.to),
+            transaction_hash: value.hash.unwrap(),
+        }
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct TransactionStorage {
-    pub(crate) transactions: VecDeque<Transaction>,
+    pub(crate) mempool: VecDeque<Transaction>,
+    pub(crate) processed: DashMap<H256, Transaction>,
 }
 
 impl TransactionStorage {
     pub(crate) fn new() -> Self {
         Self {
-            transactions: VecDeque::new(),
+            mempool: VecDeque::new(),
+            processed: DashMap::new(),
         }
     }
 
-    pub(crate) fn send_transaction(&self, transaction_request: &TransactionRequest) -> H256 {
-        // TODO: add to mempool instead
-        let transaction: Transaction = transaction_request.into();
-        let hash = transaction.hash.unwrap();
+    // add to the transaction mempool
+    pub(crate) fn send_transaction(&mut self, transaction: Transaction) {
+        self.mempool.push_back(transaction);
+    }
 
-        // self.transactions.push_back(transaction);
+    // get the transaction
+    pub(crate) fn get_transaction(&self, hash: &H256) -> Result<Ref<H256, Transaction>> {
+        let transaction = self
+            .processed
+            .get(hash)
+            .ok_or_else(|| ChainError::TransactionNotFound(hash.to_string()))?;
 
-        hash
+        Ok(transaction)
+    }
+
+    // get the receipt of the transaction
+    pub(crate) fn get_transaction_receipt(&self, hash: &H256) -> Result<SimpleTransactionReceipt> {
+        let transaction = self.get_transaction(&hash)?;
+
+        Ok(transaction.value().into())
     }
 }
 
 impl Transaction {
-    pub(crate) fn new(from: Account, to: Account, value: U256) -> Self {
+    pub(crate) fn new(
+        from: Account,
+        to: Account,
+        value: U256,
+        nonce: U256,
+        data: Option<Bytes>,
+    ) -> Self {
         let transaction = Self(SimpleTransaction {
             from,
             to,
             value,
-            nonce: U256::zero(), // only one transaction per block for now
+            nonce,
             hash: None,
+            data,
         });
 
         transaction.hash()
@@ -78,7 +109,7 @@ mod tests {
         let to = Account::random();
         let value = U256::from(1u64);
 
-        Transaction::new(from, to, value)
+        Transaction::new(from, to, value, U256::zero(), None)
     }
 
     #[tokio::test]

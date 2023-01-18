@@ -44,7 +44,7 @@ impl<'a> Deserialize<'a> for Bytes {
                 hex::decode(&raw[2..]).map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
             Ok(Bytes(bytes))
         } else {
-            Err(Error::custom(format!("Missing 0x prefix")))
+            Err(Error::custom(format!("Missing 0x prefix in {:?}", raw)))
         }
     }
 }

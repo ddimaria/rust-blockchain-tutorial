@@ -9,7 +9,7 @@
 use ethereum_types::H256;
 use jsonrpsee::rpc_params;
 use serde_json::to_value;
-use types::transaction::{TransactionReceipt, TransactionRequest};
+use types::transaction::{SimpleTransactionReceipt, TransactionRequest};
 
 use crate::error::Result;
 use crate::Web3;
@@ -75,11 +75,11 @@ impl Web3 {
     /// let tx_hash = web3.send(transaction_request).await;
     /// let receipt = web3.transaction_receipt(tx_hash).await;
     /// ```
-    pub async fn transaction_receipt(&self, tx_hash: H256) -> Result<TransactionReceipt> {
+    pub async fn transaction_receipt(&self, tx_hash: H256) -> Result<SimpleTransactionReceipt> {
         let tx_hash = to_value(&tx_hash)?;
         let params = rpc_params![tx_hash];
         let response = self.send_rpc("eth_getTransactionReceipt", params).await?;
-        let receipt: TransactionReceipt = serde_json::from_value(response)?;
+        let receipt = serde_json::from_value(response)?;
 
         Ok(receipt)
     }
@@ -90,17 +90,20 @@ mod tests {
     use super::*;
     use crate::helpers::tests::{get_contract, web3};
     use ethereum_types::U256;
+    use std::time::Duration;
+    use tokio::time::sleep;
 
     async fn send_transaction() -> Result<H256> {
         let web3 = web3();
+        let from = web3.get_all_accounts().await.unwrap()[0];
         let to = web3.get_all_accounts().await.unwrap()[1];
         let gas = U256::from(1_000_000);
         let gas_price = U256::from(1);
         let data = get_contract();
         let transaction_request = TransactionRequest {
-            from: None,
+            from: Some(from),
             to: Some(to),
-            value: None,
+            value: Some(U256::zero()),
             gas,
             gas_price,
             data: Some(data.into()),
@@ -117,6 +120,10 @@ mod tests {
     #[tokio::test]
     async fn it_gets_a_transaction_receipt() {
         let tx_hash = send_transaction().await.unwrap();
+
+        // TODO(ddimaria): use polling or callbacks instead of waiting
+        sleep(Duration::from_millis(1000)).await;
+
         let response = web3().transaction_receipt(tx_hash).await;
         assert!(response.is_ok());
     }

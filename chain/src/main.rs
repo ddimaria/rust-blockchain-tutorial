@@ -22,7 +22,7 @@ use server::serve;
 #[tokio::main]
 async fn main() -> Result<()> {
     // TODO(ddimaria): remove
-    let (blockchain, _, _) = setup();
+    let (blockchain, _, _) = setup().await;
     let _server = serve("127.0.0.1:8545", blockchain).await?;
 
     // create a future that never resolves

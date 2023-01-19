@@ -49,14 +49,14 @@ pub(crate) fn eth_get_balance(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method("eth_getBalance", move |params, blockchain| async move {
         let key = params.one::<Account>()?;
         let block = blockchain.lock().await.get_current_block().number;
-        let account = blockchain
+        let balance = blockchain
             .lock()
             .await
             .accounts
             .get_account_balance_by_block(&key, &BlockNumber(block))
             .map_err(|e| Error::Custom(e.to_string()))?;
 
-        Ok(account)
+        Ok(to_hex(balance))
     })?;
 
     Ok(())

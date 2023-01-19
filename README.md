@@ -5,7 +5,55 @@ _WORK IN PROGRESS_
 This repo is designed to train entry-level Rust developers on intermediate and advanced Rust development in the context of Ethereum blockchain development.
 While learning Rust, the developer will also explore Ethereum concepts and implement a naive Web3 driver, a rpc client, and even build a simple blockchain.
 
+## Roadmap
+
+- [x] Ethereum Types
+- [x] Basic Chain Node
+- [x] Basic Web3 Client
+- [ ] WASM VM for Contract Execution (wasmtime)
+- [ ] P2P Networking between Nodes (libp2p)
+- [ ] PoS Consensus
+- [ ] Persistent Disk Chain State (RocksDB)
+- [ ] Intermediate Chain Node
+- [ ] Intermediate Web3 Client
+- [ ] Full Tutorial
+- [ ] CI
+
 ## Organization
+
+### Chain
+
+The [chain](chain) crate is a simplistic ethereum blockchain. The goal is to implement major features to fully integrate with the [web3](web3) crate.
+
+This chain currently has in-memory state
+
+#### API
+
+##### eth_blockNumber
+
+###### Request
+```shell
+curl -X POST \
+     -H 'Content-Type: application/json' \
+     -d '{"jsonrpc":"2.0","id":"id","method":"eth_accounts","params":[]}' \ 
+     http://127.0.0.1:8545
+```
+
+###### Response
+
+```json
+{
+    "jsonrpc":"2.0",
+    "id":"id",
+    "result":[
+        0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
+        0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
+        0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
+    ]
+}
+```
+
+More information can be found in the web3 [README](chain).
 
 ### Web3
 
@@ -33,36 +81,6 @@ let code = web3.code(receipt.contract_address.unwrap(), None).await?;
 ```
 
 More information can be found in the web3 [README](web3).
-
-### Chain
-
-The [chain](chain) crate is a simplistic ethereum blockchain. The goal is to implement major features to fully integrate with the [web3](web3) crate.
-
-Sample usage to get all accounts:
-
-### Request
-```shell
-curl -X POST \
-     -H 'Content-Type: application/json' \
-     -d '{"jsonrpc":"2.0","id":"id","method":"eth_accounts","params":[]}' \
-     http://127.0.0.1:8545
-```
-
-### Response
-
-```json
-{
-    "jsonrpc":"2.0",
-    "id":"id",
-    "result":[
-        0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266,
-        0x70997970c51812dc3a010c7d01b50e0d17dc79c8,
-        0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
-    ]
-}
-```
-
-More information can be found in the web3 [README](chain).
 
 ### Types
 

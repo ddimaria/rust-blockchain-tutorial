@@ -47,32 +47,13 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 ```json
 {
     "jsonrpc":"2.0",
     "id":"id",
     "result":100
-}
-```
-
-#### Get Account Balance
-
-```shell
-curl -X POST \
-     -H 'Content-Type: application/json' \
-     -d '{"jsonrpc":"2.0","id":"id","method":"eth_getBalance","params":["0x1baa70d7b3b679db9103f0b539b689d9e5cbcb00"]}' \
-     http://127.0.0.1:8545
-```
-
-###### Response
-
-```json
-{
-    "jsonrpc":"2.0",
-    "id":"id",
-    "result":"0x64"
 }
 ```
 
@@ -85,7 +66,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 ```json
 {
@@ -104,7 +85,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 ```json
 {
@@ -123,7 +104,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 ```json
 {
@@ -158,7 +139,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 Receive a transaction receipt hash on a successful acceptance of a transaction
 
@@ -179,7 +160,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 Receive a transaction receipt of a process transaction
 
@@ -206,7 +187,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 The contract's code
 

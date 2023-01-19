@@ -43,7 +43,7 @@ use crate::error::{Result, TypeError};
 use crate::helpers::hex_to_u64;
 use crate::transaction::{SimpleTransaction, Transaction};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "block_number")]
 pub struct BlockNumber(pub U64);
 
@@ -66,7 +66,7 @@ impl From<i32> for BlockNumber {
     }
 }
 
-// TODO: replace the custom code below with serde_with's hex macros
+// TODO(ddimaria): replace the custom code below with serde_with's hex macros
 impl TryFrom<String> for BlockNumber {
     type Error = TypeError;
 
@@ -102,8 +102,8 @@ pub struct Block {
     pub uncles: Vec<H256>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct SimpleBlock {
     pub hash: Option<H256>,
     pub nonce: H256,

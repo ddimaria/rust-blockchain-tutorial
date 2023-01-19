@@ -9,6 +9,7 @@ async-jsonrpc-client = "0.3.0"
 ethereum-types = "0.10.0"
 ethabi = "13"
 hex = "0.4"
+jsonrpsee = { version = "0.16.2", features = ["full", "client"] }
 log = "0.4.0"
 serde = "1"
 serde_json = "1"

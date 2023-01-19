@@ -7,17 +7,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use jsonrpsee::core::Error as JsonRpseeError;
-use std::{
-    net::AddrParseError,
-    sync::{MutexGuard, PoisonError},
-};
+use std::{net::AddrParseError, sync::PoisonError};
 use thiserror::Error;
 use tracing_subscriber::{
     filter::{FromEnvError, ParseError as TracingParseError},
     util::TryInitError as TracingTryInitError,
 };
-
-use crate::blockchain;
 
 #[derive(Error, Debug)]
 pub enum ChainError {
@@ -38,6 +33,9 @@ pub enum ChainError {
 
     #[error("The tracing global default subscriber could not be initialized: {0}")]
     TracingTryInitError(String),
+
+    #[error("Transaction {0} not found")]
+    TransactionNotFound(String),
 }
 
 /// Utility result type to be used throughout

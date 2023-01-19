@@ -31,6 +31,12 @@ pub fn append(input: TokenStream2) -> TokenStream2 {
                 &mut self.0
             }
         }
+
+        impl Into<#inner_ident> for #ident {
+            fn into(self) -> #inner_ident {
+                self.0
+            }
+        }
     };
 
     output.into()
@@ -56,6 +62,12 @@ mod tests {
             impl std::ops::DerefMut for Block {
                 fn deref_mut(&mut self) -> &mut SimpleBlock {
                     &mut self.0
+                }
+            }
+
+            impl Into<SimpleBlock> for Block {
+                fn into(self) -> SimpleBlock {
+                    self.0
                 }
             }
         };

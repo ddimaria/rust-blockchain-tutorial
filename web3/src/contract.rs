@@ -6,10 +6,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::Params;
 use ethereum_types::Address;
 use ethereum_types::{H256, U256};
-use serde_json::Value;
+use jsonrpsee::rpc_params;
 use types::block::BlockNumber;
 use types::bytes::Bytes;
 use types::helpers::to_hex;
@@ -35,9 +34,9 @@ impl Web3 {
         let gas_price = U256::from(1_000_000);
         let data: Bytes = abi.into();
         let transaction_request = TransactionRequest {
-            from: None,
-            to: Some(owner),
-            value: None,
+            from: Some(owner),
+            to: None,
+            value: Some(U256::zero()),
             gas,
             gas_price,
             data: Some(data),
@@ -66,11 +65,8 @@ impl Web3 {
         block_number: Option<BlockNumber>,
     ) -> Result<String> {
         let block_number = Web3::get_hex_blocknumber(block_number);
-        let params = Params::Array(vec![
-            Value::String(to_hex(address)),
-            Value::String(block_number),
-        ]);
-        let response = self.send_rpc("eth_getCode", Some(params)).await?;
+        let params = rpc_params![to_hex(address), block_number];
+        let response = self.send_rpc("eth_getCode", params).await?;
         let balance: String = serde_json::from_value(response)?;
 
         Ok(balance)
@@ -79,6 +75,10 @@ impl Web3 {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use tokio::time::sleep;
+
     use super::*;
     use crate::helpers::tests::{get_contract, web3};
 
@@ -99,6 +99,10 @@ mod tests {
     async fn it_gets_a_contract_code() {
         let web3 = web3();
         let tx_hash = deploy_contract().await.unwrap();
+
+        // TODO(ddimaria): use polling or callbacks instead of waiting
+        sleep(Duration::from_millis(1000)).await;
+
         let receipt = web3.transaction_receipt(tx_hash).await.unwrap();
         let response = web3.code(receipt.contract_address.unwrap(), None).await;
         assert!(response.is_ok());

@@ -5,12 +5,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use blake2::{Blake2s256, Digest};
-use ethereum_types::{H256, H64, U64};
+use ethereum_types::{H256, U64};
 use proc_macros::NewType;
 use serde::{Deserialize, Serialize};
 use types::{block::SimpleBlock, transaction::SimpleTransaction};
 
-#[derive(Debug, Serialize, Deserialize, NewType)]
+#[derive(Debug, Serialize, Deserialize, NewType, Clone)]
 pub(crate) struct Block(SimpleBlock);
 
 impl Block {
@@ -31,6 +31,7 @@ impl Block {
             parent_hash,
             transactions,
         });
+
         block.hash()
     }
 

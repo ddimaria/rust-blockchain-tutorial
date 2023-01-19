@@ -28,9 +28,10 @@ pub struct Transaction {
     pub value: U256,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
 pub struct SimpleTransaction {
+    pub data: Option<Bytes>,
     pub from: Address,
     pub hash: Option<H256>,
     pub nonce: U256,
@@ -40,7 +41,7 @@ pub struct SimpleTransaction {
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct TransactionRequest {
     pub data: Option<Bytes>,
     pub gas: U256,
@@ -64,6 +65,15 @@ pub struct TransactionReceipt {
     pub status: Option<U64>,
     pub transaction_hash: H256,
     pub transaction_index: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
+pub struct SimpleTransactionReceipt {
+    pub block_hash: Option<H256>,
+    pub block_number: Option<BlockNumber>,
+    pub contract_address: Option<H160>,
+    pub transaction_hash: H256,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

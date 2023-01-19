@@ -5,7 +5,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use async_jsonrpc_client::{HttpClient, Output, Params, Transport};
+use jsonrpsee::core::client::ClientT;
+use jsonrpsee::core::traits::ToRpcParams;
+use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use log::*;
 use serde_json::Value;
 
@@ -30,7 +32,9 @@ impl Web3 {
 
     /// Create a new HTTP JSON-RPC client with given url.
     fn get_client(url: &str) -> Result<HttpClient> {
-        HttpClient::new(url).map_err(|e| Web3Error::ClientError(e.to_string()))
+        HttpClientBuilder::default()
+            .build(url)
+            .map_err(|e| Web3Error::ClientError(e.to_string()))
     }
 
     /// Send a RPC call with the given method and parameters.
@@ -40,23 +44,28 @@ impl Web3 {
     /// ```ignore
     /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
     ///
-    /// let response = web3.send_rpc("eth_blockNumber", None).await;
+    /// let response = web3.send_rpc("eth_blockNumber", rpc_params![]).await;
     /// assert!(response.is_ok());
     /// ```
-    pub async fn send_rpc(&self, method: &str, params: Option<Params>) -> Result<Value> {
+    pub async fn send_rpc<Params>(&self, method: &str, params: Params) -> Result<Value>
+    where
+        Params: ToRpcParams + Send + std::fmt::Debug,
+    {
         trace!("Sending RPC {} with params {:?}", method, params);
 
         let response = self
             .client
             .request(method, params)
             .await
-            .map_err(|e| Web3Error::RpcRequestError(e.to_string()))?;
+            .map_err(|e| Web3Error::RpcRequestError(e.to_string()));
 
         trace!("RPC Response {:?}", response);
 
-        match response {
-            Output::Success(s) => Ok(s.result),
-            Output::Failure(f) => Err(Web3Error::RpcResponseError(f.error.to_string())),
-        }
+        response
+
+        // match response {
+        //     Output::Success(s) => Ok(s.result),
+        //     Output::Failure(f) => Err(Web3Error::RpcResponseError(f.error.to_string())),
+        // }
     }
 }

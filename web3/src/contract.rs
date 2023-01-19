@@ -35,7 +35,7 @@ impl Web3 {
         let data: Bytes = abi.into();
         let transaction_request = TransactionRequest {
             from: Some(owner),
-            to: Some(owner),
+            to: None,
             value: Some(U256::zero()),
             gas,
             gas_price,

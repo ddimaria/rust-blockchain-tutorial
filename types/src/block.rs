@@ -43,7 +43,7 @@ use crate::error::{Result, TypeError};
 use crate::helpers::hex_to_u64;
 use crate::transaction::{SimpleTransaction, Transaction};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "block_number")]
 pub struct BlockNumber(pub U64);
 

@@ -1,7 +1,6 @@
 use crate::error::{ChainError, Result};
 
 use blake2::{Blake2s256, Digest};
-use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
 use ethereum_types::{H256, U256, U64};
 use proc_macros::NewType;
@@ -31,7 +30,7 @@ impl From<&Transaction> for SimpleTransactionReceipt {
 #[derive(Debug)]
 pub(crate) struct TransactionStorage {
     pub(crate) mempool: VecDeque<Transaction>,
-    pub(crate) processed: DashMap<H256, Transaction>,
+    pub(crate) processed: DashMap<H256, SimpleTransactionReceipt>,
 }
 
 impl TransactionStorage {
@@ -47,21 +46,17 @@ impl TransactionStorage {
         self.mempool.push_back(transaction);
     }
 
-    // get the transaction
-    pub(crate) fn get_transaction(&self, hash: &H256) -> Result<Ref<H256, Transaction>> {
-        let transaction = self
-            .processed
-            .get(hash)
-            .ok_or_else(|| ChainError::TransactionNotFound(hash.to_string()))?;
-
-        Ok(transaction)
-    }
-
     // get the receipt of the transaction
     pub(crate) fn get_transaction_receipt(&self, hash: &H256) -> Result<SimpleTransactionReceipt> {
-        let transaction = self.get_transaction(&hash)?;
+        let transaction_receipt = self
+            .processed
+            .get(hash)
+            .ok_or_else(|| ChainError::TransactionNotFound(hash.to_string()))
+            .unwrap()
+            .value()
+            .clone();
 
-        Ok(transaction.value().into())
+        Ok(transaction_receipt)
     }
 }
 

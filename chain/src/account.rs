@@ -40,8 +40,6 @@ impl AccountStorage {
     pub(crate) fn add_account(&self, key: Option<Account>, data: AccountData) -> Account {
         let key = key.unwrap_or_else(|| Account::random());
 
-        println!("adding account {:?} {:?}", key, data);
-
         if !self.accounts.contains_key(&key) {
             self.accounts.insert(key, data);
         }

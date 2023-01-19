@@ -67,7 +67,7 @@ pub struct TransactionReceipt {
     pub transaction_index: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct SimpleTransactionReceipt {
     pub block_hash: Option<H256>,

@@ -13,7 +13,9 @@ use crate::transaction::{Transaction, TransactionStorage};
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H160, H256, U256};
 use tokio::sync::Mutex;
-use types::transaction::{SimpleTransaction, SimpleTransactionReceipt, TransactionRequest};
+use types::transaction::{
+    SimpleTransaction, SimpleTransactionReceipt, TransactionReceipt, TransactionRequest,
+};
 
 #[derive(Debug)]
 pub(crate) struct BlockChain {
@@ -89,14 +91,18 @@ impl BlockChain {
             if let Some(transaction) = transaction {
                 tracing::info!("Processing Transaction {:?}", transaction);
 
+                let mut transaction_receipt: SimpleTransactionReceipt = (&transaction).into();
+
                 // if this is a contract deployment, create an account
                 if transaction.data.is_some() {
+                    // TODO(ddimaria): create deterministic contract address below
                     // let sender = self.accounts.get_account(&transaction.from).unwrap();
                     // let contract_address = format!("{}{}", transaction.from, sender.nonce);
                     // let hash = Blake2s256::digest(&contract_address);
 
                     let account_data = AccountData::new(transaction.data.clone());
-                    let account = self.accounts.add_account(None, account_data);
+                    let contract_address = self.accounts.add_account(None, account_data);
+                    transaction_receipt.contract_address = Some(contract_address);
                 }
 
                 self.transactions
@@ -104,7 +110,7 @@ impl BlockChain {
                     .lock()
                     .await
                     .processed
-                    .insert(transaction.hash.unwrap(), transaction);
+                    .insert(transaction.hash.unwrap(), transaction_receipt);
 
                 let transactions = self.transactions.lock().await;
                 tracing::info!(

@@ -144,12 +144,6 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
                 .map_err(|_| Error::Custom(format!("Invalid block number")))?
         };
 
-        println!(
-            "accounts ({}) {:?}",
-            address,
-            blockchain.lock().await.accounts.get_account(&address)
-        );
-
         let code_hash = blockchain
             .lock()
             .await

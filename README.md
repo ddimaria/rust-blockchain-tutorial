@@ -23,15 +23,14 @@ While learning Rust, the developer will also explore Ethereum concepts and imple
 
 ### Chain
 
-The [chain](chain) crate is a simplistic ethereum blockchain. The goal is to implement major features to fully integrate with the [web3](web3) crate.
+The [chain](chain) crate is a simplistic ethereum blockchain node.
+It currently holds state in memory (TBD on disk storage).
+The external json-rpc API mirrors that of Ethereum.
+It contains a WASM runtime for executing contracts.
 
-This chain currently has in-memory state
+#### Sample API: eth_blockNumber
 
-#### API
-
-##### eth_blockNumber
-
-###### Request
+##### Request
 ```shell
 curl -X POST \
      -H 'Content-Type: application/json' \
@@ -39,7 +38,7 @@ curl -X POST \
      http://127.0.0.1:8545
 ```
 
-###### Response
+##### Response
 
 ```json
 {
@@ -53,7 +52,49 @@ curl -X POST \
 }
 ```
 
-More information can be found in the web3 [README](chain).
+The full API can be found in the chain [README](chain).
+
+### Runtime
+
+The [runtime](runtime) crate is a wasmtime runtime for executing WASM contracts.
+It leverages the [component model](https://github.com/WebAssembly/component-model) and [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen) to simplify host and guest interactions.
+
+### Contracts
+
+The [contracts-wasm](contracts-wasm) directory holds the WASM source code.
+Using [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen), we can greatly simplify dealing with complex types.
+
+#### WIT
+
+The [WIT format](https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md) specifies a language for generating WASM code. 
+
+```wit
+default world contract {
+  export erc20: interface {
+    mint: func(address: string, amount: u64)
+  }
+}
+```
+
+#### Sample Contract - Erc20
+
+Using the magical `generate!` macro, we remove boilerplate glue code, so all you see is the Rust contract. 
+
+```rust
+use wit_bindgen_guest_rust::*;
+
+wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
+
+struct Erc20 {}
+
+export_contract!(Erc20);
+
+impl erc20::Erc20 for Erc20 {
+    fn mint(address: String, amount: u64) {
+        // mint some coin
+    }
+}
+```
 
 ### Web3
 
@@ -61,7 +102,7 @@ The [web3](web3) crate is a naive implementation of a Web3 interface.
 It has been minimized to focus on learning the concepts of the blockchain.
 The goal will be to build out some of the most used endpoints.
 
-Sample usage:
+#### Sample Usage
 
 ```rust
 use web3::Web3;
@@ -86,19 +127,22 @@ More information can be found in the web3 [README](web3).
 
 The [types](types) crate is holds shared types to be used by the other crates.
 
-### Client
-
-The [client](client) crate is a working ethereum rpc client. This may or may not access a custom blockchain, time permitting.
-
-### Contracts
-
-The [contracts](contracts) directory holds our source and compiled contracts. For now, there is just an ERC20 contract in there, but hope to add ERC721 and ERC1155 later.
-
 ## Getting Started
 
-TBD
+First, start the chain:
 
-See individual crates for instructions.
+```shell
+cd chain
+RUST_LOG=info cargo run
+```
+
+You should see:
+
+```console
+2023-01-25T00:58:58.382776Z  INFO chain::server: Starting server on 127.0.0.1:8545
+```
+
+You can now send [json-rpc calls](web3) to the API.
 
 ## Compiling
 

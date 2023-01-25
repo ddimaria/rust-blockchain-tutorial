@@ -1,0 +1,5 @@
+default world contract {
+  export erc20: interface {
+    mint: func(address: string, amount: u64)
+  }
+}

@@ -63,13 +63,13 @@ impl Web3 {
         &self,
         address: Address,
         block_number: Option<BlockNumber>,
-    ) -> Result<String> {
+    ) -> Result<Vec<u8>> {
         let block_number = Web3::get_hex_blocknumber(block_number);
         let params = rpc_params![to_hex(address), block_number];
         let response = self.send_rpc("eth_getCode", params).await?;
-        let balance: String = serde_json::from_value(response)?;
+        let code: Vec<u8> = serde_json::from_value(response)?;
 
-        Ok(balance)
+        Ok(code)
     }
 }
 
@@ -105,6 +105,8 @@ mod tests {
 
         let receipt = web3.transaction_receipt(tx_hash).await.unwrap();
         let response = web3.code(receipt.contract_address.unwrap(), None).await;
-        assert!(response.is_ok());
+
+        // ensure the code matches what was deployed
+        assert_eq!(response.unwrap(), get_contract());
     }
 }

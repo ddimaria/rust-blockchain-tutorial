@@ -13,7 +13,6 @@ pub mod tests {
     }
 
     pub fn get_contract() -> Vec<u8> {
-        include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json")
-            .to_vec()
+        include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20.wasm").to_vec()
     }
 }

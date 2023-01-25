@@ -53,7 +53,7 @@ curl -X POST \
 }
 ```
 
-More information can be found in the web3 [README](chain).
+More information can be found in the chain [README](chain).
 
 ### Web3
 
@@ -85,10 +85,6 @@ More information can be found in the web3 [README](web3).
 ### Types
 
 The [types](types) crate is holds shared types to be used by the other crates.
-
-### Client
-
-The [client](client) crate is a working ethereum rpc client. This may or may not access a custom blockchain, time permitting.
 
 ### Contracts
 

@@ -153,7 +153,7 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
             .code_hash
             .unwrap();
 
-        Ok(code_hash)
+        Ok(code_hash.0)
     })?;
 
     Ok(())

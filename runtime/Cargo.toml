@@ -1,0 +1,21 @@
+[package]
+name = "runtime"
+version = "0.1.0"
+authors = ["David DiMaria <info@collectivesessions.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.68"
+env_logger = "0.10.0"
+thiserror = "1.0.38"
+tracing = "0.1.34"
+tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+types = { path = "../types" }
+wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", features = [
+  "component-model",
+] }
+wit-component = "*"
+
+
+[dev-dependencies]
+test-log = { version = "0.2.11", features = ["trace"] }

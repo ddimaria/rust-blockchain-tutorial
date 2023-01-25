@@ -1,5 +1,40 @@
 # ERC20 WASM Contract
 
+The [contracts-wasm](contracts-wasm) directory holds the WASM source code.
+Using [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen), we can greatly simplify dealing with complex types.
+The [WIT format](https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md) specifies a language for generating WASM code. 
+## Contracts
+
+### WIT
+
+```wit
+default world contract {
+  export erc20: interface {
+    mint: func(address: string, amount: u64)
+  }
+}
+```
+
+### Erc20
+
+Using the magical `generate!` macro, we remove boilerplate glue code, so all you see is the Rust contract. 
+
+```rust
+use wit_bindgen_guest_rust::*;
+
+wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
+
+struct Erc20 {}
+
+export_contract!(Erc20);
+
+impl erc20::Erc20 for Erc20 {
+    fn mint(address: String, amount: u64) {
+        // mint some coin
+    }
+}
+```
+
 ## Build
 ```shell
 cargo build --target wasm32-unknown-unknown --release

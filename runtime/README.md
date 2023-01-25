@@ -1,3 +1,4 @@
 # WASM Runtime
 
-A WASM runtime built on top of wasmtime.
+The [runtime](runtime) crate is a wasmtime runtime for executing WASM contracts.
+It leverages the [component model](https://github.com/WebAssembly/component-model) and [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen) to simplify host and guest interactions.

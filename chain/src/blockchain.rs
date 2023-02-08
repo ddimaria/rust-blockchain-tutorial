@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::account::{AccountData, AccountStorage};
 use crate::block::Block;
 use crate::error::Result;
+use crate::storage::db;
 use crate::transaction::{Transaction, TransactionStorage};
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H160, H256, U256};
@@ -22,14 +23,16 @@ pub(crate) struct BlockChain {
     pub(crate) accounts: AccountStorage,
     pub(crate) blocks: Vec<Block>,
     pub(crate) transactions: Arc<Mutex<TransactionStorage>>,
+    pub(crate) db: rocksdb::DB,
 }
 
 impl BlockChain {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(db: rocksdb::DB) -> Self {
         Self {
             accounts: AccountStorage::new(),
             blocks: vec![Block::genesis()],
             transactions: Arc::new(Mutex::new(TransactionStorage::new())),
+            db,
         }
     }
 
@@ -144,6 +147,6 @@ mod tests {
 
     #[tokio::test]
     async fn creates_a_blockchain() {
-        let blockchain = BlockChain::new();
+        let blockchain = BlockChain::new(db());
     }
 }

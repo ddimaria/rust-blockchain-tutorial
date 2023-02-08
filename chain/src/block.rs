@@ -60,7 +60,7 @@ impl Block {
 
 #[cfg(test)]
 mod tests {
-    use crate::blockchain::BlockChain;
+    use crate::{blockchain::BlockChain, storage::db};
 
     use super::*;
 
@@ -84,7 +84,7 @@ mod tests {
 
     #[tokio::test]
     async fn creates_a_block() {
-        let blockchain = BlockChain::new();
+        let blockchain = BlockChain::new(db());
         let block = new_block(&blockchain);
         // println!("{:?}", block);
     }

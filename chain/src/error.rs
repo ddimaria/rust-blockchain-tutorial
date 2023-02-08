@@ -25,6 +25,15 @@ pub enum ChainError {
     #[error("JsonRpsee Error: {0}")]
     JsonRpseeError(String),
 
+    #[error("Could not deserialize for storage: {0}")]
+    StorageDeserialize(String),
+
+    #[error("Could not {0} in storage")]
+    StorageNotFound(String),
+
+    #[error("Could not serialize for storage: {0}")]
+    StorageSerialize(String),
+
     #[error("Error parsing EnvFilter from an environment variable {0}")]
     TracingFromEnvError(String),
 

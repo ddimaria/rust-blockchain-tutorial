@@ -13,6 +13,7 @@ mod helpers;
 mod logger;
 mod method;
 mod server;
+mod storage;
 mod transaction;
 
 use error::Result;

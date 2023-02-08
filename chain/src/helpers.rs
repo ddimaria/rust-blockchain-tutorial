@@ -18,13 +18,14 @@ pub mod tests {
     use tokio::sync::Mutex;
 
     use crate::{
-        account::AccountData, blockchain::BlockChain, server::serve, transaction::Transaction,
+        account::AccountData, blockchain::BlockChain, server::serve, storage::db,
+        transaction::Transaction,
     };
 
     static ADDRESS: &'static str = "127.0.0.1:8545";
 
     pub(crate) async fn server(blockchain: Option<Arc<Mutex<BlockChain>>>) -> ServerHandle {
-        let blockchain = blockchain.unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new())));
+        let blockchain = blockchain.unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new(db()))));
         serve(ADDRESS, blockchain).await.unwrap()
     }
 
@@ -34,7 +35,7 @@ pub mod tests {
     }
 
     pub(crate) async fn setup() -> (Arc<Mutex<BlockChain>>, H160, H160) {
-        let mut blockchain = BlockChain::new();
+        let mut blockchain = BlockChain::new(db());
         let account_data_1 = AccountData::new(None);
         let account_data_2 = AccountData::new(None);
         let id_1 = blockchain.accounts.add_account(None, account_data_1);

@@ -10,10 +10,10 @@ While learning Rust, the developer will also explore Ethereum concepts and imple
 - [x] Ethereum Types
 - [x] Basic Chain Node
 - [x] Basic Web3 Client
-- [ ] WASM VM for Contract Execution (wasmtime)
+- [x] WASM VM for Contract Execution (wasmtime)
 - [ ] P2P Networking between Nodes (libp2p)
 - [ ] PoS Consensus
-- [ ] Persistent Disk Chain State (RocksDB)
+- [x] Persistent Disk Chain State (RocksDB)
 - [ ] Intermediate Chain Node
 - [ ] Intermediate Web3 Client
 - [ ] Full Tutorial

@@ -15,17 +15,24 @@ pub mod tests {
         http_client::{HttpClient, HttpClientBuilder},
         server::ServerHandle,
     };
+    use lazy_static::lazy_static;
+    use rocksdb::{DBCommon, SingleThreaded};
     use tokio::sync::Mutex;
 
     use crate::{
-        account::AccountData, blockchain::BlockChain, server::serve, storage::db,
+        account::AccountData, blockchain::BlockChain, server::serve, storage::Storage,
         transaction::Transaction,
     };
 
     static ADDRESS: &'static str = "127.0.0.1:8545";
 
+    lazy_static! {
+        pub(crate) static ref STORAGE: Arc<Storage> = Arc::new(Storage::new().unwrap());
+    }
+
     pub(crate) async fn server(blockchain: Option<Arc<Mutex<BlockChain>>>) -> ServerHandle {
-        let blockchain = blockchain.unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new(db()))));
+        let blockchain =
+            blockchain.unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new((*STORAGE).clone()))));
         serve(ADDRESS, blockchain).await.unwrap()
     }
 
@@ -35,7 +42,7 @@ pub mod tests {
     }
 
     pub(crate) async fn setup() -> (Arc<Mutex<BlockChain>>, H160, H160) {
-        let mut blockchain = BlockChain::new(db());
+        let mut blockchain = BlockChain::new((*STORAGE).clone());
         let account_data_1 = AccountData::new(None);
         let account_data_2 = AccountData::new(None);
         let id_1 = blockchain.accounts.add_account(None, account_data_1);
@@ -51,6 +58,6 @@ pub mod tests {
     }
 
     pub(crate) fn assert_vec_eq<T: std::cmp::PartialEq>(vec_1: Vec<T>, vec_2: Vec<T>) {
-        assert!(vec_1.iter().all(|item| vec_2.contains(item)));
+        assert!(vec_2.iter().all(|item| vec_1.contains(item)));
     }
 }

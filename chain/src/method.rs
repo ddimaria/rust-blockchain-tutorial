@@ -173,6 +173,8 @@ pub mod tests {
         let mut module = RpcModule::new(blockchain);
         eth_accounts(&mut module).unwrap();
         let response: Vec<Account> = module.call("eth_accounts", rpc_params![]).await.unwrap();
+        println!("**{:?}", response);
+        println!("**{:?}", vec![id_1, id_2]);
 
         assert_vec_eq(response, vec![id_1, id_2]);
     }
@@ -189,8 +191,8 @@ pub mod tests {
             .balance;
         let mut module = RpcModule::new(blockchain);
         eth_get_balance(&mut module).unwrap();
-        let response: u64 = module.call("eth_getBalance", [id_1]).await.unwrap();
+        let response: String = module.call("eth_getBalance", [id_1]).await.unwrap();
 
-        assert_eq!(response, balance);
+        assert_eq!(response, to_hex(balance));
     }
 }

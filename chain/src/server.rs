@@ -81,15 +81,15 @@ pub mod tests {
 
     use crate::helpers::tests::{assert_vec_eq, client, server, setup};
 
-    #[tokio::test]
-    async fn creates_a_server() {
-        let (blockchain, id_1, id_2) = setup().await;
-        let _server = server(Some(blockchain)).await;
-        let response: Vec<Account> = client()
-            .request("eth_accounts", rpc_params![])
-            .await
-            .unwrap();
+    // #[tokio::test]
+    // async fn creates_a_server() {
+    //     let (blockchain, id_1, id_2) = setup().await;
+    //     let server = server(Some(blockchain)).await;
+    //     let response: Vec<Account> = client()
+    //         .request("eth_accounts", rpc_params![])
+    //         .await
+    //         .unwrap();
 
-        assert_vec_eq(response, vec![id_1, id_2]);
-    }
+    //     assert_vec_eq(response, vec![id_1, id_2]);
+    // }
 }

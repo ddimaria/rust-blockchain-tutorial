@@ -1,12 +1,14 @@
-use dashmap::mapref::one::RefMut;
-use dashmap::DashMap;
-use rayon::iter::ParallelIterator;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use types::account::Account;
 use types::block::BlockNumber;
 use types::bytes::Bytes;
 
-use crate::error::{ChainError, Result};
+use crate::{
+    error::{ChainError, Result},
+    storage::Storage,
+};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub(crate) struct AccountData {
@@ -27,21 +29,19 @@ impl AccountData {
 
 #[derive(Debug)]
 pub(crate) struct AccountStorage {
-    pub(crate) accounts: DashMap<Account, AccountData>,
+    pub(crate) accounts: Arc<Storage>,
 }
 
 impl AccountStorage {
-    pub(crate) fn new() -> Self {
-        Self {
-            accounts: DashMap::new(),
-        }
+    pub(crate) fn new(storage: Arc<Storage>) -> Self {
+        Self { accounts: storage }
     }
 
     pub(crate) fn add_account(&self, key: Option<Account>, data: AccountData) -> Account {
         let key = key.unwrap_or_else(|| Account::random());
 
         if !self.accounts.contains_key(&key) {
-            self.accounts.insert(key, data);
+            self.accounts.insert(key, &data).unwrap();
         }
 
         key
@@ -55,20 +55,22 @@ impl AccountStorage {
 
     pub(crate) fn get_all_accounts(&self) -> Vec<Account> {
         self.accounts
-            .par_iter_mut()
-            .map(|ref_mut_multi| ref_mut_multi.key().to_owned())
+            .get_all_keys()
+            .unwrap()
+            .iter()
+            .map(|value| Account::from_slice(value.as_ref()))
             .collect()
     }
 
     pub(crate) fn get_account(&self, key: &Account) -> Result<AccountData> {
-        let account_data = self.get_mut_account(&key)?.value().to_owned();
+        let account_data = self.get_mut_account(&key)?.to_owned();
         Ok(account_data)
     }
 
-    pub(crate) fn get_mut_account(&self, key: &Account) -> Result<RefMut<Account, AccountData>> {
+    pub(crate) fn get_mut_account(&self, key: &Account) -> Result<AccountData> {
         self.accounts
-            .get_mut(key)
-            .ok_or_else(|| ChainError::AccountNotFound(format!("Account {} not found", key)))
+            .get(key)
+            .map_err(|_| ChainError::AccountNotFound(format!("Account {} not found", key)))
     }
 
     pub(crate) fn increment_nonce(&mut self, key: &Account) -> Result<u64> {

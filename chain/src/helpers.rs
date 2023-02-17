@@ -4,6 +4,26 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+use crate::error::{
+    ChainError::{DeserializeError, SerializeError},
+    Result,
+};
+
+pub(crate) fn serialize<V: Serialize>(value: &V) -> Result<Vec<u8>> {
+    let serialized = bincode::serialize(value).map_err(|e| SerializeError(e.to_string()))?;
+    Ok(serialized)
+}
+
+pub(crate) fn deserialize<V: DeserializeOwned>(value: &[u8]) -> Result<V> {
+    let deserialized =
+        bincode::deserialize::<V>(value).map_err(|e| DeserializeError(e.to_string()))?;
+
+    Ok(deserialized)
+}
+
 // #[cfg(test)]
 #[allow(unused)]
 pub mod tests {
@@ -31,8 +51,8 @@ pub mod tests {
     }
 
     pub(crate) async fn server(blockchain: Option<Arc<Mutex<BlockChain>>>) -> ServerHandle {
-        let blockchain =
-            blockchain.unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new((*STORAGE).clone()))));
+        let blockchain = blockchain
+            .unwrap_or_else(|| Arc::new(Mutex::new(BlockChain::new((*STORAGE).clone()).unwrap())));
         serve(ADDRESS, blockchain).await.unwrap()
     }
 
@@ -42,11 +62,17 @@ pub mod tests {
     }
 
     pub(crate) async fn setup() -> (Arc<Mutex<BlockChain>>, H160, H160) {
-        let mut blockchain = BlockChain::new((*STORAGE).clone());
+        let mut blockchain = BlockChain::new((*STORAGE).clone()).unwrap();
         let account_data_1 = AccountData::new(None);
         let account_data_2 = AccountData::new(None);
-        let id_1 = blockchain.accounts.add_account(None, account_data_1);
-        let id_2 = blockchain.accounts.add_account(None, account_data_2);
+        let id_1 = blockchain
+            .accounts
+            .add_account(None, &account_data_1)
+            .unwrap();
+        let id_2 = blockchain
+            .accounts
+            .add_account(None, &account_data_2)
+            .unwrap();
         blockchain.accounts.add_account_balance(&id_1, 100).unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);

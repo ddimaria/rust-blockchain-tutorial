@@ -10,11 +10,14 @@ use proc_macros::NewType;
 use serde::{Deserialize, Serialize};
 use types::{block::SimpleBlock, transaction::SimpleTransaction};
 
+use crate::error::Result;
+use crate::helpers::serialize;
+
 #[derive(Debug, Serialize, Deserialize, NewType, Clone)]
 pub(crate) struct Block(SimpleBlock);
 
 impl Block {
-    pub(crate) fn genesis() -> Self {
+    pub(crate) fn genesis() -> Result<Self> {
         Self::new(U64::one(), H256::zero(), H256::zero(), vec![])
     }
 
@@ -23,7 +26,7 @@ impl Block {
         nonce: H256,
         parent_hash: H256,
         transactions: Vec<SimpleTransaction>,
-    ) -> Block {
+    ) -> Result<Block> {
         let block = Block(SimpleBlock {
             number,
             hash: None,
@@ -35,26 +38,15 @@ impl Block {
         block.hash()
     }
 
-    pub(crate) fn serialize(&self) -> String {
-        format!(
-            "{:?}",
-            (
-                &self.nonce,
-                &self.number,
-                &self.parent_hash,
-                &self.transactions
-            )
-        )
+    pub(crate) fn serialize(&self) -> Result<Vec<u8>> {
+        serialize(&self)
     }
 
-    pub(crate) fn hash(mut self) -> Self {
-        let hash = Blake2s256::digest(&self.serialize());
+    pub(crate) fn hash(mut self) -> Result<Self> {
+        let hash = Blake2s256::digest(&self.serialize()?);
         self.hash = Some(H256::from(hash.as_ref()));
-        self
-    }
 
-    pub(crate) fn is_signed(&self) -> bool {
-        self.hash.is_some()
+        Ok(self)
     }
 }
 
@@ -65,8 +57,8 @@ mod tests {
 
     use super::*;
 
-    pub(crate) fn new_block(blockchain: &BlockChain) -> Block {
-        let current_block = blockchain.get_current_block();
+    pub(crate) fn new_block(blockchain: &BlockChain) -> Result<Block> {
+        let current_block = blockchain.get_current_block()?;
         let number = current_block.number + 1_u64;
         let parent_hash = current_block.hash.unwrap();
         let transactions: Vec<SimpleTransaction> = vec![];
@@ -85,7 +77,7 @@ mod tests {
 
     #[tokio::test]
     async fn creates_a_block() {
-        let blockchain = BlockChain::new((*STORAGE).clone());
+        let blockchain = BlockChain::new((*STORAGE).clone()).unwrap();
         let block = new_block(&blockchain);
         // println!("{:?}", block);
     }

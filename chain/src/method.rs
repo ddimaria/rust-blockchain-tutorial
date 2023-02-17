@@ -6,6 +6,7 @@
 
 use ethereum_types::H256;
 use jsonrpsee::core::Error;
+use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::RpcModule;
 use types::{
     account::Account,
@@ -27,7 +28,12 @@ pub(crate) fn eth_accounts(module: &mut RpcModule<Context>) -> Result<()> {
 
 pub(crate) fn eth_block_number(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method("eth_blockNumber", |_, blockchain| async move {
-        let block_number = blockchain.lock().await.get_current_block().number;
+        let block_number = blockchain
+            .lock()
+            .await
+            .get_current_block()
+            .map_err(|e| JsonRpseeError::Custom(e.to_string()))?
+            .number;
         Ok(block_number)
     })?;
 
@@ -48,7 +54,13 @@ pub(crate) fn eth_get_block_by_number(module: &mut RpcModule<Context>) -> Result
 pub(crate) fn eth_get_balance(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method("eth_getBalance", move |params, blockchain| async move {
         let key = params.one::<Account>()?;
-        let block = blockchain.lock().await.get_current_block().number;
+        let block = blockchain
+            .lock()
+            .await
+            .get_current_block()
+            .map_err(|e| JsonRpseeError::Custom(e.to_string()))?
+            .number;
+
         let balance = blockchain
             .lock()
             .await
@@ -69,13 +81,11 @@ pub(crate) fn eth_get_balance_by_block(module: &mut RpcModule<Context>) -> Resul
             let mut seq = params.sequence();
             let account = seq.next::<Account>()?;
             let block = seq.next::<String>()?.clone();
-            let block_number = if block == String::from("latest") {
-                BlockNumber(blockchain.lock().await.get_current_block().number)
-            } else {
-                block
-                    .try_into()
-                    .map_err(|_| Error::Custom(format!("Invalid block number")))?
-            };
+            let block_number = blockchain
+                .lock()
+                .await
+                .get_block_number(&block)
+                .map_err(|e| JsonRpseeError::Custom(e.to_string()))?;
 
             let balance = blockchain
                 .lock()
@@ -136,13 +146,11 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
         // TODO(ddimaria): lookup code by block number
         // let _block = seq.next::<BlockNumber>()?;
         let block = seq.next::<String>()?.clone();
-        let _block_number = if block == String::from("latest") {
-            BlockNumber(blockchain.lock().await.get_current_block().number)
-        } else {
-            block
-                .try_into()
-                .map_err(|_| Error::Custom(format!("Invalid block number")))?
-        };
+        let _block_number = blockchain
+            .lock()
+            .await
+            .get_block_number(&block)
+            .map_err(|e| JsonRpseeError::Custom(e.to_string()))?;
 
         let code_hash = blockchain
             .lock()

@@ -5,6 +5,7 @@ use rocksdb::DB;
 use serde::Serialize;
 
 use crate::error::{ChainError, Result};
+use crate::helpers::{deserialize, serialize};
 
 const PATH: &str = ".tmp";
 const DATABASE_NAME: &str = "db";
@@ -24,7 +25,7 @@ impl Storage {
 
     pub(crate) fn insert<K: AsRef<[u8]>, V: Serialize>(&self, key: K, value: &V) -> Result<()> {
         self.db
-            .put(&key, &Storage::serialize(&value)?)
+            .put(&key, &serialize(&value)?)
             .map_err(|_| ChainError::StoragePutError(Storage::key_string(&key)))?;
         Ok(())
     }
@@ -36,7 +37,7 @@ impl Storage {
             .map_err(|_| ChainError::StorageNotFound(Storage::key_string(&key)))?
             .ok_or_else(|| ChainError::StorageNotFound(Storage::key_string(&key)))?;
 
-        Storage::deserialize(&value)
+        deserialize(&value)
     }
 
     pub(crate) fn get_all_keys(&self) -> Result<Vec<Box<[u8]>>> {
@@ -45,7 +46,6 @@ impl Storage {
             .iterator(rocksdb::IteratorMode::Start)
             .map(std::result::Result::unwrap)
             .map(|(key, _)| key)
-            // .map(|(_, value)| Storage::deserialize(&*value))
             .collect();
 
         Ok(value)
@@ -56,22 +56,8 @@ impl Storage {
         pinned.is_ok() && pinned.unwrap().is_some()
     }
 
-    fn key_string<K: AsRef<[u8]>>(key: K) -> String {
+    pub(crate) fn key_string<K: AsRef<[u8]>>(key: K) -> String {
         String::from_utf8(key.as_ref().to_vec()).unwrap_or("UNKNOWN".into())
-    }
-
-    fn serialize<V: Serialize>(value: &V) -> Result<Vec<u8>> {
-        let serialized =
-            bincode::serialize(value).map_err(|e| ChainError::StorageSerialize(e.to_string()))?;
-
-        Ok(serialized)
-    }
-
-    fn deserialize<V: DeserializeOwned>(value: &[u8]) -> Result<V> {
-        let deserialized = bincode::deserialize::<V>(value)
-            .map_err(|e| ChainError::StorageDeserialize(e.to_string()))?;
-
-        Ok(deserialized)
     }
 
     fn path() -> PathBuf {

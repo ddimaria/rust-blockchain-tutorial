@@ -67,11 +67,11 @@ impl From<i32> for BlockNumber {
 }
 
 // TODO(ddimaria): replace the custom code below with serde_with's hex macros
-impl TryFrom<String> for BlockNumber {
+impl TryFrom<&str> for BlockNumber {
     type Error = TypeError;
 
-    fn try_from(value: String) -> Result<Self> {
-        let parsed = hex_to_u64(value)?;
+    fn try_from(value: &str) -> Result<Self> {
+        let parsed = hex_to_u64(value.to_string())?;
         Ok(BlockNumber(parsed))
     }
 }

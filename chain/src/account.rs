@@ -37,44 +37,40 @@ impl AccountStorage {
         Self { accounts: storage }
     }
 
-    pub(crate) fn add_account(&self, key: Option<Account>, data: AccountData) -> Account {
+    pub(crate) fn add_account(&self, key: Option<Account>, data: &AccountData) -> Result<Account> {
         let key = key.unwrap_or_else(|| Account::random());
 
         if !self.accounts.contains_key(&key) {
-            self.accounts.insert(key, &data).unwrap();
+            self.accounts.insert(key, &data)?;
+        } else {
+            tracing::info!("Did not create account {} as it already exists", &key);
         }
 
-        key
+        Ok(key)
     }
 
     pub(crate) fn add_account_balance(&self, key: &Account, amount: u64) -> Result<()> {
-        self.get_mut_account(&key)?.balance += amount;
-
+        self.get_account(&key)?.balance += amount;
         Ok(())
     }
 
     pub(crate) fn get_all_accounts(&self) -> Vec<Account> {
         self.accounts
             .get_all_keys()
-            .unwrap()
+            .unwrap_or_else(|_| vec![])
             .iter()
             .map(|value| Account::from_slice(value.as_ref()))
             .collect()
     }
 
     pub(crate) fn get_account(&self, key: &Account) -> Result<AccountData> {
-        let account_data = self.get_mut_account(&key)?.to_owned();
-        Ok(account_data)
-    }
-
-    pub(crate) fn get_mut_account(&self, key: &Account) -> Result<AccountData> {
         self.accounts
             .get(key)
             .map_err(|_| ChainError::AccountNotFound(format!("Account {} not found", key)))
     }
 
     pub(crate) fn increment_nonce(&mut self, key: &Account) -> Result<u64> {
-        let mut account = self.get_mut_account(&key)?;
+        let mut account = self.get_account(&key)?;
         account.nonce += 1;
 
         Ok(account.nonce)

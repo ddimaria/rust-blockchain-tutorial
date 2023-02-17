@@ -22,23 +22,29 @@ pub enum ChainError {
     #[error("Account {0} not found")]
     AccountNotFound(String),
 
+    #[error("Block {0} not found")]
+    BlockNotFound(String),
+
+    #[error("Could not deserialize: {0}")]
+    DeserializeError(String),
+
+    #[error("Invalid block number {0}")]
+    InvalidBlockNumber(String),
+
     #[error("JsonRpsee Error: {0}")]
     JsonRpseeError(String),
 
+    #[error("Could not serialize for storage: {0}")]
+    SerializeError(String),
+
     #[error("Could not open the database: {0}")]
     StorageCannotOpenDb(String),
-
-    #[error("Could not deserialize for storage: {0}")]
-    StorageDeserialize(String),
 
     #[error("Could not find {0} in storage")]
     StorageNotFound(String),
 
     #[error("Could put {0} in storage")]
     StoragePutError(String),
-
-    #[error("Could not serialize for storage: {0}")]
-    StorageSerialize(String),
 
     #[error("Error parsing EnvFilter from an environment variable {0}")]
     TracingFromEnvError(String),
@@ -83,6 +89,12 @@ impl From<TracingTryInitError> for ChainError {
 impl From<JsonRpseeError> for ChainError {
     fn from(error: JsonRpseeError) -> Self {
         ChainError::JsonRpseeError(error.to_string())
+    }
+}
+
+impl Into<JsonRpseeError> for ChainError {
+    fn into(self) -> JsonRpseeError {
+        JsonRpseeError::Custom("Internal error".into())
     }
 }
 

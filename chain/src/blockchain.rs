@@ -8,12 +8,13 @@ use std::sync::Arc;
 
 use crate::account::{AccountData, AccountStorage};
 use crate::block::Block;
-use crate::error::Result;
+use crate::error::{ChainError, Result};
 use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionStorage};
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H160, H256, U256};
 use tokio::sync::Mutex;
+use types::block::BlockNumber;
 use types::transaction::{
     SimpleTransaction, SimpleTransactionReceipt, TransactionReceipt, TransactionRequest,
 };
@@ -26,22 +27,37 @@ pub(crate) struct BlockChain {
 }
 
 impl BlockChain {
-    pub(crate) fn new(storage: Arc<Storage>) -> Self {
-        Self {
+    pub(crate) fn new(storage: Arc<Storage>) -> Result<Self> {
+        Ok(Self {
             accounts: AccountStorage::new(storage),
-            blocks: vec![Block::genesis()],
+            blocks: vec![Block::genesis()?],
             transactions: Arc::new(Mutex::new(TransactionStorage::new())),
+        })
+    }
+
+    pub(crate) fn get_current_block(&self) -> Result<Block> {
+        let block = self
+            .blocks
+            .last()
+            .ok_or_else(|| ChainError::BlockNotFound("current block".into()))?;
+
+        Ok(block.to_owned())
+    }
+
+    pub(crate) fn get_block_number(&self, block_number: &str) -> Result<BlockNumber> {
+        if block_number == String::from("latest") {
+            Ok(BlockNumber(self.get_current_block()?.number))
+        } else {
+            Ok(block_number
+                .try_into()
+                .map_err(|_| ChainError::InvalidBlockNumber(block_number.into()))?)
         }
     }
 
-    pub(crate) fn get_current_block(&self) -> Block {
-        self.blocks.last().unwrap().to_owned()
-    }
-
-    pub(crate) fn new_block(&mut self, transactions: Vec<SimpleTransaction>) -> H256 {
+    pub(crate) fn new_block(&mut self, transactions: Vec<SimpleTransaction>) -> Result<H256> {
         // TODO(ddimaria): make this an atomic operation
         // TODO(ddimaria): handle unwraps
-        let current_block = self.get_current_block();
+        let current_block = self.get_current_block()?;
         let number = current_block.number + 1_u64;
         let parent_hash = current_block.hash.unwrap();
         let nonce_serialized = format!("{:?}", (number, parent_hash, &transactions));
@@ -52,13 +68,12 @@ impl BlockChain {
             H256::from(nonce.as_ref()),
             parent_hash,
             transactions,
-        );
+        )?;
 
         let hash = block.hash.unwrap();
-
         self.blocks.push(block);
 
-        hash
+        Ok(hash)
     }
 
     pub(crate) async fn send_transaction(
@@ -102,8 +117,11 @@ impl BlockChain {
                     // let hash = Blake2s256::digest(&contract_address);
 
                     let account_data = AccountData::new(transaction.data.clone());
-                    let contract_address = self.accounts.add_account(None, account_data);
-                    transaction_receipt.contract_address = Some(contract_address);
+                    if let Ok(contract_address) = self.accounts.add_account(None, &account_data) {
+                        transaction_receipt.contract_address = Some(contract_address);
+                    } else {
+                        tracing::error!("Error creating a contract account {:?}", account_data);
+                    }
                 }
 
                 self.transactions

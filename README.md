@@ -125,7 +125,11 @@ More information can be found in the web3 [README](web3).
 
 ### Types
 
-The [types](types) crate is holds shared types to be used by the other crates.
+The [types](types) crate holds shared types to be used by the other crates.
+
+### Crypto
+
+The [crypto](crypto) crate provides functions for generating keys, hashing data, signing and verifying.
 
 ## Getting Started
 

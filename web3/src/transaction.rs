@@ -107,6 +107,8 @@ mod tests {
             gas,
             gas_price,
             data: Some(data.into()),
+            r: None,
+            s: None,
         };
         web3.send(transaction_request).await
     }

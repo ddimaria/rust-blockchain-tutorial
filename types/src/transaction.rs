@@ -39,6 +39,16 @@ pub struct SimpleTransaction {
     pub value: U256,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct SignedTransaction {
+    pub message_hash: H256,
+    pub v: u64,
+    pub r: H256,
+    pub s: H256,
+    pub raw_transaction: Bytes,
+    pub transaction_hash: H256,
+}
+
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
@@ -49,6 +59,10 @@ pub struct TransactionRequest {
     pub from: Option<Address>,
     pub to: Option<Address>,
     pub value: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub s: Option<U256>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

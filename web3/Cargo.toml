@@ -11,6 +11,7 @@ ethabi = "13"
 hex = "0.4"
 jsonrpsee = { version = "0.16.2", features = ["full", "client"] }
 log = "0.4.0"
+secp256k1 = { version = "0.24.0", features = ["recovery", "global-context"] }
 serde = "1"
 serde_json = "1"
 thiserror = "1.0"

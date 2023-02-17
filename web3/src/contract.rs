@@ -40,6 +40,8 @@ impl Web3 {
             gas,
             gas_price,
             data: Some(data),
+            r: None,
+            s: None,
         };
 
         self.send(transaction_request).await

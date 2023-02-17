@@ -1,0 +1,13 @@
+[package]
+name = "crypto"
+version = "0.1.0"
+authors = ["David DiMaria <info@collectivesessions.com>"]
+edition = "2021"
+
+[dependencies]
+ethereum-types = "0.10.0"
+k256 = { version = "0.11.5", default-features = false, features = ["ecdsa"] }
+lazy_static = "1.4.0"
+secp256k1 = { version = "0.26.0", features = ["recovery", "global-context", "bitcoin-hashes-std", "rand-std"] }
+sha3 = "0.10.6"
+types = { path = "../types" }

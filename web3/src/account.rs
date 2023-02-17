@@ -8,9 +8,11 @@
 
 use ethereum_types::U256;
 use jsonrpsee::rpc_params;
+use secp256k1::SecretKey;
 use types::account::Account;
 use types::block::BlockNumber;
 use types::helpers::to_hex;
+use types::transaction::Transaction;
 
 use crate::error::Result;
 use crate::Web3;
@@ -76,6 +78,11 @@ impl Web3 {
         let balance: U256 = serde_json::from_value(response)?;
 
         Ok(balance)
+    }
+
+    // TODO(ddimaria): store Secp256k1 in a lazy static
+    pub async fn sign_transaction(&self, transaction: Transaction, key: SecretKey) -> Result<()> {
+        Ok(())
     }
 }
 

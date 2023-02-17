@@ -2,6 +2,7 @@
 members = [
     "chain",
     "contracts-wasm/erc20",
+    "crypto",
     "proc_macros",
     "runtime",
     "types",

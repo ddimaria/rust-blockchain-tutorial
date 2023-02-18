@@ -1,3 +1,4 @@
+<!-- omit in toc -->
 # Rust Blockchain Tutorial
 
 _WORK IN PROGRESS_
@@ -5,6 +6,7 @@ _WORK IN PROGRESS_
 This repo is designed to train entry-level Rust developers on intermediate and advanced Rust development in the context of Ethereum blockchain development.
 While learning Rust, the developer will also explore Ethereum concepts and implement a naive Web3 driver, a rpc client, and even build a simple blockchain.
 
+<!-- omit in toc -->
 ## Roadmap
 
 - [x] Ethereum Types
@@ -18,6 +20,62 @@ While learning Rust, the developer will also explore Ethereum concepts and imple
 - [ ] Intermediate Web3 Client
 - [ ] Full Tutorial
 - [ ] CI
+
+<!-- omit in toc -->
+## Table of Contents
+
+- [Deep Dive](#deep-dive)
+  - [Accounts](#accounts)
+- [Organization](#organization)
+  - [Chain](#chain)
+    - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
+      - [Request](#request)
+      - [Response](#response)
+  - [Runtime](#runtime)
+  - [Contracts](#contracts)
+    - [WIT](#wit)
+    - [Sample Contract - Erc20](#sample-contract---erc20)
+  - [Web3](#web3)
+    - [Sample Usage](#sample-usage)
+  - [Types](#types)
+  - [Crypto](#crypto)
+- [Getting Started](#getting-started)
+- [Compiling](#compiling)
+- [Running Tests](#running-tests)
+
+## Deep Dive
+
+### Accounts
+
+In Ethereum, `Accounts` are either `Externally Owned Accounts` or `Contract Accounts`.  
+
+```rust
+struct AccountData {
+    nonce: u64,
+    balance: u64,
+    code_hash: Option<Bytes>,
+}
+```
+
+Externally Owned Accounts are simply a public address.  This address is a 20 byte hash (`H160`), and is created by applying a Keccak256 hash function on the public key, taking the last 20 bytes.  This is how we create an Ethereum Account in Rust:
+
+```rust
+use crypto::{keypair, public_key_address};
+
+let (private_key, public_key) = keypair();
+let address = public_key_address(&public_key);
+
+fn public_key_address(key: &PublicKey) -> H160 {
+    let public_key = key.serialize_uncompressed();
+    let hash = keccak256(&public_key[1..]);
+
+    Address::from_slice(&hash[12..])
+}
+```
+
+Since we can't derive the public key from the hash, the public key is not known until a transaction is validated.  We'll dig a bit more into this in the Transaction section.
+
+Contract Accounts are also just an address, but have a code hash associated with them.  A contract's address is created by [RLP encoding](https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/) the sender's address and their current nonce.  This encoding is then hashed using Keccak256 hash function, taking the last 20 bytes.  This process is similiar to the Externally Owned Account creation, but the input is a RLP encoded
 
 ## Organization
 

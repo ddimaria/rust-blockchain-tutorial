@@ -12,7 +12,7 @@ use serde_json::to_value;
 use types::transaction::{SimpleTransactionReceipt, TransactionRequest};
 
 use crate::error::Result;
-use crate::Web3;
+use crate::{account, Web3};
 
 impl Web3 {
     /// Create a new message call transaction or deploy a contract.

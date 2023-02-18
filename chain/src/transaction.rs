@@ -1,4 +1,5 @@
 use crate::error::{ChainError, Result};
+use crate::helpers::serialize;
 
 use blake2::{Blake2s256, Digest};
 use dashmap::DashMap;
@@ -67,7 +68,7 @@ impl Transaction {
         value: U256,
         nonce: U256,
         data: Option<Bytes>,
-    ) -> Self {
+    ) -> Result<Self> {
         let transaction = Self(SimpleTransaction {
             from,
             to,
@@ -80,18 +81,15 @@ impl Transaction {
         transaction.hash()
     }
 
-    pub(crate) fn serialize(&self) -> String {
-        format!("{:?}", (&self.nonce, &self.from, &self.to, &self.value))
+    pub(crate) fn serialize(&self) -> Result<Vec<u8>> {
+        serialize(&self)
     }
 
-    pub(crate) fn hash(mut self) -> Self {
-        let hash = Blake2s256::digest(&self.serialize());
+    pub(crate) fn hash(mut self) -> Result<Self> {
+        let hash = Blake2s256::digest(&self.serialize()?);
         self.hash = Some(H256::from(hash.as_ref()));
-        self
-    }
 
-    pub(crate) fn is_signed(&self) -> bool {
-        self.hash.is_some()
+        Ok(self)
     }
 }
 
@@ -104,7 +102,7 @@ mod tests {
         let to = Account::random();
         let value = U256::from(1u64);
 
-        Transaction::new(from, to, value, U256::zero(), None)
+        Transaction::new(from, to, value, U256::zero(), None).unwrap()
     }
 
     #[tokio::test]

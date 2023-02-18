@@ -13,6 +13,6 @@ pub mod tests {
     }
 
     pub fn get_contract() -> Vec<u8> {
-        include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20.wasm").to_vec()
+        include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm").to_vec()
     }
 }

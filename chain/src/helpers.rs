@@ -47,7 +47,7 @@ pub mod tests {
     static ADDRESS: &'static str = "127.0.0.1:8545";
 
     lazy_static! {
-        pub(crate) static ref STORAGE: Arc<Storage> = Arc::new(Storage::new().unwrap());
+        pub(crate) static ref STORAGE: Arc<Storage> = Arc::new(Storage::new(Some("test")).unwrap());
     }
 
     pub(crate) async fn server(blockchain: Option<Arc<Mutex<BlockChain>>>) -> ServerHandle {
@@ -76,7 +76,10 @@ pub mod tests {
         blockchain.accounts.add_account_balance(&id_1, 100).unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);
-        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None).hash();
+        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None)
+            .unwrap()
+            .hash()
+            .unwrap();
 
         blockchain.new_block(vec![transaction.into()]);
 

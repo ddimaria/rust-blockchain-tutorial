@@ -1,6 +1,7 @@
-use ethereum_types::{Address, H160, H256};
+use ethereum_types::{Address, H160, H256, U256};
 use lazy_static::lazy_static;
-use secp256k1::{
+pub use rlp::{Encodable, RlpStream};
+pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
@@ -190,9 +191,32 @@ pub fn recover_address(message: &[u8], signature: &[u8], recovery_id: i32) -> Ad
 }
 
 // Helper function to hash bytes and convert to a Message
-fn hash_message(message: &[u8]) -> Message {
+pub fn hash_message(message: &[u8]) -> Message {
     let hashed = keccak256(message);
     Message::from_slice(&hashed).unwrap()
+}
+
+/// Encode items in a RlpStream
+///
+/// The RlP crate panics if stream.out() is invoked when the stream hasn't
+/// consumed all list items (`list_size`).
+pub fn rlp_encode<T: Encodable>(items: Vec<T>, signature: Option<&Signature>) -> RlpStream {
+    let mut stream = RlpStream::new();
+
+    let list_size = if signature.is_some() { 0 } else { 6 };
+    stream.begin_list(list_size);
+
+    items.iter().for_each(|item| {
+        stream.append(item);
+    });
+
+    if let Some(signature) = signature {
+        stream.append(&signature.v);
+        stream.append(&U256::from_big_endian(signature.r.as_bytes()));
+        stream.append(&U256::from_big_endian(signature.s.as_bytes()));
+    }
+
+    stream
 }
 
 #[cfg(test)]
@@ -250,5 +274,13 @@ mod tests {
         let (_, serialized_signature) = signature.serialize_compact();
         let verified = verify(message, &serialized_signature, &public_key);
         assert!(verified);
+    }
+
+    #[test]
+    fn it_rlp_encodes() {
+        let items = vec!["a", "b", "c", "d", "e", "f"];
+        let stream = rlp_encode(items, None);
+
+        assert_eq!(stream.out().to_vec(), b"\xc6abcdef".to_vec());
     }
 }

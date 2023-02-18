@@ -41,7 +41,6 @@ pub struct SimpleTransaction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignedTransaction {
-    pub message_hash: H256,
     pub v: u64,
     pub r: H256,
     pub s: H256,

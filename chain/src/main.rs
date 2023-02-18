@@ -16,14 +16,21 @@ mod server;
 mod storage;
 mod transaction;
 
+use std::sync::Arc;
+
+use blockchain::BlockChain;
 use error::Result;
-use helpers::tests::setup;
 use server::serve;
+use storage::Storage;
+use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // TODO(ddimaria): remove
-    let (blockchain, _, _) = setup().await;
+    // let storage = Arc::new(Storage::new(None)?);
+    // let blockchain = BlockChain::new(storage)?;
+    // let _server = serve("127.0.0.1:8545", Arc::new(Mutex::new(blockchain))).await?;
+
+    let (blockchain, _, _) = crate::helpers::tests::setup().await;
     let _server = serve("127.0.0.1:8545", blockchain).await?;
 
     // create a future that never resolves

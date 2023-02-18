@@ -8,6 +8,7 @@ edition = "2021"
 ethereum-types = "0.10.0"
 k256 = { version = "0.11.5", default-features = false, features = ["ecdsa"] }
 lazy_static = "1.4.0"
+rlp = "0.5.2"
 secp256k1 = { version = "0.26.0", features = ["recovery", "global-context", "bitcoin-hashes-std", "rand-std"] }
 sha3 = "0.10.6"
 types = { path = "../types" }

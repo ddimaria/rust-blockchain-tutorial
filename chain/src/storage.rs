@@ -16,8 +16,9 @@ pub(crate) struct Storage {
 }
 
 impl Storage {
-    pub(crate) fn new() -> Result<Self> {
-        let db = DB::open_default(Storage::path())
+    pub(crate) fn new(database_name: Option<&str>) -> Result<Self> {
+        let database_name = database_name.unwrap_or_else(|| DATABASE_NAME);
+        let db = DB::open_default(Storage::path(database_name))
             .map_err(|e| ChainError::StorageCannotOpenDb(e.to_string()))?;
 
         Ok(Self { db })
@@ -60,8 +61,8 @@ impl Storage {
         String::from_utf8(key.as_ref().to_vec()).unwrap_or("UNKNOWN".into())
     }
 
-    fn path() -> PathBuf {
-        Path::new(PATH).join(DATABASE_NAME)
+    fn path(database_name: &str) -> PathBuf {
+        Path::new(PATH).join(database_name)
     }
 }
 
@@ -71,8 +72,6 @@ mod tests {
 
     use crate::account::AccountData;
     use crate::helpers::tests::STORAGE;
-
-    use super::*;
 
     #[test]
     fn it_creates_a_db() {

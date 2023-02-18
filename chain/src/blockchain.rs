@@ -89,7 +89,8 @@ impl BlockChain {
             transaction_request.value.unwrap_or(U256::zero()),
             nonce,
             transaction_request.data,
-        );
+        )
+        .unwrap();
 
         // TODO(ddimaria): handle unwraps
         let hash = transaction.hash.unwrap();

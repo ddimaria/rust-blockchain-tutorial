@@ -1,3 +1,4 @@
+pub use blake2::{Blake2s256, Digest};
 use ethereum_types::{Address, H160, H256, U256};
 use lazy_static::lazy_static;
 pub use rlp::{Encodable, RlpStream};
@@ -5,8 +6,6 @@ pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
-use sha3::{Digest, Keccak256};
-use types::bytes::Bytes;
 
 lazy_static! {
     pub(crate) static ref CONTEXT: Secp256k1<All> = Secp256k1::new();
@@ -31,15 +30,13 @@ impl From<RecoverableSignature> for Signature {
 }
 
 // TODO(ddimaria): handle unwrap
-impl Into<Bytes> for Signature {
-    fn into(self) -> Bytes {
-        Bytes({
-            let mut bytes = Vec::with_capacity(65);
-            bytes.extend_from_slice(self.r.as_bytes());
-            bytes.extend_from_slice(self.s.as_bytes());
-            bytes.push(self.v.try_into().unwrap());
-            bytes
-        })
+impl Into<Vec<u8>> for Signature {
+    fn into(self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(65);
+        bytes.extend_from_slice(self.r.as_bytes());
+        bytes.extend_from_slice(self.s.as_bytes());
+        bytes.push(self.v.try_into().unwrap());
+        bytes
     }
 }
 
@@ -54,7 +51,7 @@ pub fn keypair() -> (SecretKey, PublicKey) {
     generate_keypair(&mut rand::thread_rng())
 }
 
-/// Convert a public key into an address using the last 20 bytes of the Keccak256 hash
+/// Convert a public key into an address using the last 20 bytes of the hash
 ///
 /// ```rust
 /// use crypto::{keypair, public_key_address};
@@ -64,12 +61,12 @@ pub fn keypair() -> (SecretKey, PublicKey) {
 /// ```
 pub fn public_key_address(key: &PublicKey) -> H160 {
     let public_key = key.serialize_uncompressed();
-    let hash = keccak256(&public_key[1..]);
+    let hash = hash(&public_key[1..]);
 
     Address::from_slice(&hash[12..])
 }
 
-/// Convert a private key into an address using the last 20 bytes of the Keccak256 hash
+/// Convert a private key into an address using the last 20 bytes of the hash
 ///
 /// ```rust
 /// use crypto::{keypair, private_key_address};
@@ -83,22 +80,20 @@ pub fn private_key_address(key: &SecretKey) -> H160 {
     public_key_address(&public_key)
 }
 
-/// Create a Keccak256 hash
+/// Create a hash
 ///
 /// ```rust
-/// use crypto::keccak256;
+/// use crypto::hash;
 ///
 /// let message = b"The message";
-/// let hashed = keccak256(message);
+/// let hashed = hash(message);
 /// assert_eq!(hashed, [
-///     174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
-///     197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
+///     249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
+///     43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
 /// ]);
 /// ```
-pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
-    let mut hasher = Keccak256::new();
-    hasher.update(bytes);
-    hasher.finalize().into()
+pub fn hash(bytes: &[u8]) -> [u8; 32] {
+    Blake2s256::digest(bytes).into()
 }
 
 /// Sign a message with a private key
@@ -192,7 +187,7 @@ pub fn recover_address(message: &[u8], signature: &[u8], recovery_id: i32) -> Ad
 
 // Helper function to hash bytes and convert to a Message
 pub fn hash_message(message: &[u8]) -> Message {
-    let hashed = keccak256(message);
+    let hashed = hash(message);
     Message::from_slice(&hashed).unwrap()
 }
 
@@ -202,8 +197,12 @@ pub fn hash_message(message: &[u8]) -> Message {
 /// consumed all list items (`list_size`).
 pub fn rlp_encode<T: Encodable>(items: Vec<T>, signature: Option<&Signature>) -> RlpStream {
     let mut stream = RlpStream::new();
+    let mut list_size = items.len();
 
-    let list_size = if signature.is_some() { 0 } else { 6 };
+    if signature.is_some() {
+        list_size += 3
+    }
+
     stream.begin_list(list_size);
 
     items.iter().for_each(|item| {
@@ -234,12 +233,12 @@ mod tests {
     #[test]
     fn it_hashes() {
         let message = b"The message";
-        let hashed = keccak256(message);
+        let hashed = hash(message);
         assert_eq!(
             hashed,
             [
-                174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
-                197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
+                249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
+                43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
             ]
         );
     }

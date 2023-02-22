@@ -9,10 +9,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::RpcModule;
 use types::{
-    account::Account,
-    block::BlockNumber,
-    helpers::to_hex,
-    transaction::{SimpleTransactionReceipt, TransactionRequest},
+    account::Account, block::BlockNumber, bytes::Bytes, helpers::to_hex,
+    transaction::TransactionRequest,
 };
 
 use crate::{error::Result, server::Context};
@@ -110,6 +108,24 @@ pub(crate) fn eth_send_transaction(module: &mut RpcModule<Context>) -> Result<()
                 .lock()
                 .await
                 .send_transaction(transaction_request)
+                .await;
+
+            Ok(transaction_hash)
+        },
+    )?;
+
+    Ok(())
+}
+
+pub(crate) fn eth_send_raw_transaction(module: &mut RpcModule<Context>) -> Result<()> {
+    module.register_async_method(
+        "eth_sendRawTransaction",
+        move |params, blockchain| async move {
+            let raw_transaction = params.one::<Bytes>()?;
+            let transaction_hash = blockchain
+                .lock()
+                .await
+                .send_raw_transaction(raw_transaction)
                 .await;
 
             Ok(transaction_hash)

@@ -33,15 +33,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use ethereum_types::{Address, Bloom, H256, H64, U256, U64};
+use crypto::hash;
+use ethereum_types::{H256, U64};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use crate::bytes::Bytes;
 use crate::error::{Result, TypeError};
 use crate::helpers::hex_to_u64;
-use crate::transaction::{SimpleTransaction, Transaction};
+use crate::transaction::Transaction;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename = "block_number")]
@@ -76,38 +76,66 @@ impl TryFrom<&str> for BlockNumber {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
-pub struct Block {
-    pub difficulty: U256,
-    // pub extra_data: Bytes,
-    pub gas_limit: U256,
-    pub gas_used: U256,
-    pub hash: H256,
-    pub logs_bloom: Option<Bloom>,
-    pub miner: Address,
-    pub mix_hash: Option<H256>,
-    pub nonce: Option<H64>,
-    pub number: U64,
-    pub parent_hash: H256,
-    pub receipts_root: H256,
-    pub seal_fields: Option<Vec<Bytes>>,
-    pub sha3_uncles: H256,
-    pub size: Option<U256>,
-    pub state_root: H256,
-    pub timestamp: U256,
-    pub total_difficulty: Option<U256>,
-    pub transactions: Vec<Transaction>,
-    pub transactions_root: H256,
-    pub uncles: Vec<H256>,
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+// pub struct Block {
+//     pub difficulty: U256,
+//     // pub extra_data: Bytes,
+//     pub gas_limit: U256,
+//     pub gas_used: U256,
+//     pub hash: H256,
+//     pub logs_bloom: Option<Bloom>,
+//     pub miner: Address,
+//     pub mix_hash: Option<H256>,
+//     pub nonce: Option<H64>,
+//     pub number: U64,
+//     pub parent_hash: H256,
+//     pub receipts_root: H256,
+//     pub seal_fields: Option<Vec<Bytes>>,
+//     pub sha3_uncles: H256,
+//     pub size: Option<U256>,
+//     pub state_root: H256,
+//     pub timestamp: U256,
+//     pub total_difficulty: Option<U256>,
+//     pub transactions: Vec<Transaction>,
+//     pub transactions_root: H256,
+//     pub uncles: Vec<H256>,
+// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
-pub struct SimpleBlock {
-    pub hash: Option<H256>,
+#[serde(rename_all(serialize = "snake_case", deserialize = "snake_case"))]
+pub struct Block {
     pub nonce: H256,
     pub number: U64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hash: Option<H256>,
     pub parent_hash: H256,
-    pub transactions: Vec<SimpleTransaction>,
+    pub transactions: Vec<Transaction>,
+}
+
+impl Block {
+    pub fn new(
+        number: U64,
+        nonce: H256,
+        parent_hash: H256,
+        transactions: Vec<Transaction>,
+    ) -> Result<Block> {
+        let mut block = Block {
+            number,
+            hash: None,
+            nonce,
+            parent_hash,
+            transactions,
+        };
+
+        let serialized = bincode::serialize(&block).unwrap();
+        let hashed: H256 = hash(&serialized).into();
+        block.hash = Some(hashed);
+
+        Ok(block)
+    }
+
+    pub fn genesis() -> Result<Self> {
+        Self::new(U64::one(), H256::zero(), H256::zero(), vec![])
+    }
 }

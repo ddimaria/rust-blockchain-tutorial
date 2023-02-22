@@ -7,17 +7,16 @@
 use std::sync::Arc;
 
 use crate::account::{AccountData, AccountStorage};
-use crate::block::Block;
 use crate::error::{ChainError, Result};
 use crate::storage::Storage;
-use crate::transaction::{Transaction, TransactionStorage};
+use crate::transaction::TransactionStorage;
 use blake2::{Blake2s256, Digest};
 use ethereum_types::{H160, H256, U256};
 use tokio::sync::Mutex;
-use types::block::BlockNumber;
-use types::transaction::{
-    SimpleTransaction, SimpleTransactionReceipt, TransactionReceipt, TransactionRequest,
-};
+use types::block::{Block, BlockNumber};
+use types::bytes::Bytes;
+use types::transaction::Transaction;
+use types::transaction::{Transaction as TransactionType, TransactionReceipt, TransactionRequest};
 
 #[derive(Debug)]
 pub(crate) struct BlockChain {
@@ -30,7 +29,7 @@ impl BlockChain {
     pub(crate) fn new(storage: Arc<Storage>) -> Result<Self> {
         Ok(Self {
             accounts: AccountStorage::new(storage),
-            blocks: vec![Block::genesis()?],
+            blocks: vec![Block::genesis().unwrap()],
             transactions: Arc::new(Mutex::new(TransactionStorage::new())),
         })
     }
@@ -54,7 +53,7 @@ impl BlockChain {
         }
     }
 
-    pub(crate) fn new_block(&mut self, transactions: Vec<SimpleTransaction>) -> Result<H256> {
+    pub(crate) fn new_block(&mut self, transactions: Vec<TransactionType>) -> Result<H256> {
         // TODO(ddimaria): make this an atomic operation
         // TODO(ddimaria): handle unwraps
         let current_block = self.get_current_block()?;
@@ -68,7 +67,8 @@ impl BlockChain {
             H256::from(nonce.as_ref()),
             parent_hash,
             transactions,
-        )?;
+        )
+        .unwrap();
 
         let hash = block.hash.unwrap();
         self.blocks.push(block);
@@ -89,8 +89,7 @@ impl BlockChain {
             transaction_request.value.unwrap_or(U256::zero()),
             nonce,
             transaction_request.data,
-        )
-        .unwrap();
+        );
 
         // TODO(ddimaria): handle unwraps
         let hash = transaction.hash.unwrap();
@@ -101,6 +100,28 @@ impl BlockChain {
         hash
     }
 
+    pub(crate) async fn send_raw_transaction(&mut self, transaction: Bytes) /*-> H256*/
+    {
+        // let from = transaction_request.from.unwrap_or(H160::zero());
+        // let nonce = self.accounts.increment_nonce(&from).unwrap().into();
+
+        // let transaction: Transaction = Transaction::new(
+        //     from,
+        //     transaction_request.to.unwrap_or(H160::zero()),
+        //     transaction_request.value.unwrap_or(U256::zero()),
+        //     nonce,
+        //     transaction_request.data,
+        // );
+
+        // // TODO(ddimaria): handle unwraps
+        // let hash = transaction.hash.unwrap();
+
+        // // add to the transaction mempool
+        // self.transactions.lock().await.send_transaction(transaction);
+
+        // hash
+    }
+
     // TODO(ddimaria): actually process the transaction
     pub(crate) async fn process_transactions(&mut self) {
         loop {
@@ -108,7 +129,7 @@ impl BlockChain {
             if let Some(transaction) = transaction {
                 tracing::info!("Processing Transaction {:?}", transaction);
 
-                let mut transaction_receipt: SimpleTransactionReceipt = (&transaction).into();
+                let mut transaction_receipt: TransactionReceipt = (&transaction).into();
 
                 // if this is a contract deployment, create an account
                 if transaction.data.is_some() {
@@ -147,7 +168,7 @@ impl BlockChain {
     pub(crate) async fn get_transaction_receipt(
         &mut self,
         transaction_hash: H256,
-    ) -> Result<SimpleTransactionReceipt> {
+    ) -> Result<TransactionReceipt> {
         let transaction_receipt = self
             .transactions
             .lock()

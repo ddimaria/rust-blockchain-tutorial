@@ -6,14 +6,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use crypto::{hash_message, keccak256, rlp_encode, sign_recovery, Encodable, SecretKey, Signature};
 use ethereum_types::U256;
 use jsonrpsee::rpc_params;
 use types::account::Account;
 use types::block::BlockNumber;
-use types::bytes::Bytes;
 use types::helpers::to_hex;
-use types::transaction::{SignedTransaction, SimpleTransaction, Transaction};
+use types::transaction::{SignedTransaction, Transaction};
+use utils::crypto::SecretKey;
 
 use crate::error::Result;
 use crate::Web3;
@@ -83,25 +82,10 @@ impl Web3 {
 
     pub fn sign_transaction(
         &self,
-        transaction: SimpleTransaction,
+        transaction: Transaction,
         key: SecretKey,
     ) -> Result<SignedTransaction> {
-        let encoded = bincode::serialize(&transaction).unwrap();
-        let transaction_hash = keccak256(&encoded);
-        let signed_transaction = sign_recovery(&encoded, &key);
-        let signature: Signature = signed_transaction.into();
-        let signature_bytes: Bytes = signature.into();
-        let transaction_hash = keccak256(&signature_bytes.0).into();
-        let signature: Signature = signed_transaction.into();
-
-        let signed_transaction = SignedTransaction {
-            v: signature.v,
-            r: signature.r,
-            s: signature.r,
-            raw_transaction: encoded.into(),
-            transaction_hash,
-        };
-
+        let signed_transaction = transaction.sign(key).unwrap();
         Ok(signed_transaction)
     }
 }

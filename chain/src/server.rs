@@ -18,7 +18,8 @@ use crate::{
     logger::Logger,
     method::{
         eth_accounts, eth_block_number, eth_get_balance, eth_get_balance_by_block,
-        eth_get_block_by_number, eth_get_code, eth_get_transaction_receipt, eth_send_transaction,
+        eth_get_block_by_number, eth_get_code, eth_get_transaction_receipt,
+        eth_send_raw_transaction, eth_send_transaction,
     },
 };
 
@@ -47,6 +48,7 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
     eth_get_balance(&mut module)?;
     eth_get_balance_by_block(&mut module)?;
     eth_send_transaction(&mut module)?;
+    eth_send_raw_transaction(&mut module)?;
     eth_get_transaction_receipt(&mut module)?;
     eth_get_code(&mut module)?;
 
@@ -76,10 +78,10 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
 
 #[cfg(test)]
 pub mod tests {
-    use jsonrpsee::{core::client::ClientT, rpc_params};
-    use types::account::Account;
+    // use jsonrpsee::{core::client::ClientT, rpc_params};
+    // use types::account::Account;
 
-    use crate::helpers::tests::{assert_vec_eq, client, server, setup};
+    // use crate::helpers::tests::{assert_vec_eq, client, server, setup};
 
     // #[tokio::test]
     // async fn creates_a_server() {

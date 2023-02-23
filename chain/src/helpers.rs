@@ -38,11 +38,9 @@ pub mod tests {
     use lazy_static::lazy_static;
     use rocksdb::{DBCommon, SingleThreaded};
     use tokio::sync::Mutex;
+    use types::transaction::Transaction;
 
-    use crate::{
-        account::AccountData, blockchain::BlockChain, server::serve, storage::Storage,
-        transaction::Transaction,
-    };
+    use crate::{account::AccountData, blockchain::BlockChain, server::serve, storage::Storage};
 
     static ADDRESS: &'static str = "127.0.0.1:8545";
 
@@ -76,12 +74,9 @@ pub mod tests {
         blockchain.accounts.add_account_balance(&id_1, 100).unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);
-        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None)
-            .unwrap()
-            .hash()
-            .unwrap();
+        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None).unwrap();
 
-        blockchain.new_block(vec![transaction.into()]);
+        blockchain.new_block(vec![transaction]);
 
         (Arc::new(Mutex::new(blockchain)), id_1, id_2)
     }

@@ -8,35 +8,55 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use ethereum_types::{Address, Bloom, H160, H256, U256, U64};
+use ethereum_types::{Address, H160, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use utils::crypto::hash;
 
+use crate::account::Account;
 use crate::block::BlockNumber;
 use crate::bytes::Bytes;
+use crate::error::Result;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct Transaction {
     pub data: Option<Bytes>,
     pub from: Address,
     pub gas: U256,
     pub gas_price: U256,
-    pub hash: H256,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hash: Option<H256>,
     pub nonce: U256,
     pub to: Address,
     pub value: U256,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
-pub struct SimpleTransaction {
-    pub data: Option<Bytes>,
-    pub from: Address,
-    pub hash: Option<H256>,
-    pub nonce: U256,
-    pub to: Address,
-    pub value: U256,
+impl Transaction {
+    pub fn new(
+        from: Account,
+        to: Account,
+        value: U256,
+        nonce: U256,
+        data: Option<Bytes>,
+    ) -> Result<Self> {
+        let mut transaction = Self {
+            from,
+            to,
+            value,
+            nonce,
+            hash: None,
+            data,
+            gas: U256::from(10),
+            gas_price: U256::from(10),
+        };
+
+        let serialized = bincode::serialize(&transaction)?;
+        let hashed: H256 = hash(&serialized).into();
+        transaction.hash = Some(hashed);
+
+        Ok(transaction)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,30 +84,40 @@ pub struct TransactionRequest {
     pub s: Option<U256>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
-pub struct TransactionReceipt {
-    pub block_hash: Option<H256>,
-    pub block_number: Option<BlockNumber>,
-    pub contract_address: Option<H160>,
-    pub cumulative_gas_used: U256,
-    pub gas_used: Option<U256>,
-    pub logs: Vec<Log>,
-    pub logs_bloom: Bloom,
-    pub root: Option<H256>,
-    pub status: Option<U64>,
-    pub transaction_hash: H256,
-    pub transaction_index: String,
+impl From<Transaction> for TransactionRequest {
+    fn from(value: Transaction) -> TransactionRequest {
+        TransactionRequest {
+            from: Some(value.from),
+            to: Some(value.to),
+            value: Some(value.value),
+            data: value.data,
+            gas: value.gas,
+            gas_price: value.gas_price,
+            r: None,
+            s: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
-pub struct SimpleTransactionReceipt {
+pub struct TransactionReceipt {
     pub block_hash: Option<H256>,
     pub block_number: Option<BlockNumber>,
     pub contract_address: Option<H160>,
     pub transaction_hash: H256,
 }
+
+// impl From<&Transaction> for TransactionReceipt {
+//     fn from(value: &Transaction) -> TransactionReceipt {
+//         TransactionReceipt {
+//             block_hash: value.hash,
+//             block_number: Some(BlockNumber(U64::zero())),
+//             contract_address: Some(value.to),
+//             transaction_hash: value.hash.unwrap(),
+//         }
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]

@@ -1,12 +1,12 @@
+use crate::error::{Result, UtilsError};
+use blake2::{Blake2s256, Digest};
 use ethereum_types::{Address, H160, H256, U256};
 use lazy_static::lazy_static;
-pub use rlp::{Encodable, RlpStream};
+use rlp::{Encodable, RlpStream};
 pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
-use sha3::{Digest, Keccak256};
-use types::bytes::Bytes;
 
 lazy_static! {
     pub(crate) static ref CONTEXT: Secp256k1<All> = Secp256k1::new();
@@ -30,23 +30,27 @@ impl From<RecoverableSignature> for Signature {
     }
 }
 
-// TODO(ddimaria): handle unwrap
-impl Into<Bytes> for Signature {
-    fn into(self) -> Bytes {
-        Bytes({
-            let mut bytes = Vec::with_capacity(65);
-            bytes.extend_from_slice(self.r.as_bytes());
-            bytes.extend_from_slice(self.s.as_bytes());
-            bytes.push(self.v.try_into().unwrap());
-            bytes
-        })
+impl TryInto<Vec<u8>> for Signature {
+    type Error = UtilsError;
+
+    fn try_into(self) -> Result<Vec<u8>> {
+        let mut bytes = Vec::with_capacity(65);
+        bytes.extend_from_slice(self.r.as_bytes());
+        bytes.extend_from_slice(self.s.as_bytes());
+
+        let recovery_id: u8 = <u64 as TryInto<u8>>::try_into(self.v)
+            .map_err(|e| UtilsError::ConversionError(e.to_string()))?;
+
+        bytes.push(recovery_id);
+
+        Ok(bytes)
     }
 }
 
 /// Generate a private/public keypair
 ///
 /// ```rust
-/// use crypto::keypair;
+/// use utils::crypto::keypair;
 ///
 /// let (private_key, public_key) = keypair();
 /// ```
@@ -54,25 +58,25 @@ pub fn keypair() -> (SecretKey, PublicKey) {
     generate_keypair(&mut rand::thread_rng())
 }
 
-/// Convert a public key into an address using the last 20 bytes of the Keccak256 hash
+/// Convert a public key into an address using the last 20 bytes of the hash
 ///
 /// ```rust
-/// use crypto::{keypair, public_key_address};
+/// use utils::crypto::{keypair, public_key_address};
 ///
 /// let (private_key, public_key) = keypair();
 /// let address = public_key_address(&public_key);
 /// ```
 pub fn public_key_address(key: &PublicKey) -> H160 {
     let public_key = key.serialize_uncompressed();
-    let hash = keccak256(&public_key[1..]);
+    let hash = hash(&public_key[1..]);
 
     Address::from_slice(&hash[12..])
 }
 
-/// Convert a private key into an address using the last 20 bytes of the Keccak256 hash
+/// Convert a private key into an address using the last 20 bytes of the hash
 ///
 /// ```rust
-/// use crypto::{keypair, private_key_address};
+/// use utils::crypto::{keypair, private_key_address};
 ///
 /// let (private_key, public_key) = keypair();
 /// let address = private_key_address(&private_key);
@@ -83,28 +87,26 @@ pub fn private_key_address(key: &SecretKey) -> H160 {
     public_key_address(&public_key)
 }
 
-/// Create a Keccak256 hash
+/// Create a hash
 ///
 /// ```rust
-/// use crypto::keccak256;
+/// use utils::crypto::hash;
 ///
 /// let message = b"The message";
-/// let hashed = keccak256(message);
+/// let hashed = hash(message);
 /// assert_eq!(hashed, [
-///     174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
-///     197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
+///     249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
+///     43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
 /// ]);
 /// ```
-pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
-    let mut hasher = Keccak256::new();
-    hasher.update(bytes);
-    hasher.finalize().into()
+pub fn hash(bytes: &[u8]) -> [u8; 32] {
+    Blake2s256::digest(bytes).into()
 }
 
 /// Sign a message with a private key
 ///
 /// ```rust
-/// use crypto::{keypair, sign};
+/// use utils::crypto::{keypair, sign};
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
@@ -118,7 +120,7 @@ pub fn sign(message: &[u8], key: &SecretKey) -> EcdsaSignature {
 /// Sign a recoverable message with a private key
 ///
 /// ```rust
-/// use crypto::{keypair, sign_recovery};
+/// use utils::crypto::{keypair, sign_recovery};
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
@@ -132,67 +134,73 @@ pub fn sign_recovery(message: &[u8], key: &SecretKey) -> RecoverableSignature {
 /// Verify that a message was signed using a public key
 ///
 /// ```rust
-/// use crypto::{keypair, sign, sign_recovery, verify};
+/// use utils::crypto::{keypair, sign, sign_recovery, verify};
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
 ///
 /// let signature = sign(message, &private_key);
 /// let serialized_signature = signature.serialize_compact();
-/// let verified = verify(message, &serialized_signature, &public_key);
+/// let verified = verify(message, &serialized_signature, &public_key).unwrap();
 /// assert!(verified);
 ///
 /// let signature = sign_recovery(message, &private_key);
 /// let (_, serialized_signature) = signature.serialize_compact();
-/// let verified = verify(message, &serialized_signature, &public_key);
+/// let verified = verify(message, &serialized_signature, &public_key).unwrap();
 /// assert!(verified);
 /// ```
-pub fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> bool {
+pub fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> Result<bool> {
     let message = hash_message(message);
-    let signature = EcdsaSignature::from_compact(signature).unwrap();
-    CONTEXT.verify_ecdsa(&message, &signature, key).is_ok()
+    let signature = EcdsaSignature::from_compact(signature)
+        .map_err(|e| UtilsError::VerifyError(e.to_string()))?;
+
+    Ok(CONTEXT.verify_ecdsa(&message, &signature, key).is_ok())
 }
 
 /// Recover a public key using a recoverable signature and signed message
 ///
 /// ```rust
-/// use crypto::{keypair, recover_public_key, sign_recovery};
+/// use utils::crypto::{keypair, recover_public_key, sign_recovery};
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
 /// let signature = sign_recovery(message, &private_key);
 /// let (recovery_id, serialized_signature) = signature.serialize_compact();
-/// let recovered_public_key = recover_public_key(message, &serialized_signature, recovery_id.to_i32());
+/// let recovered_public_key = recover_public_key(message, &serialized_signature, recovery_id.to_i32()).unwrap();
 /// assert_eq!(recovered_public_key, public_key);
 /// ```
-pub fn recover_public_key(message: &[u8], signature: &[u8], recovery_id: i32) -> PublicKey {
+pub fn recover_public_key(message: &[u8], signature: &[u8], recovery_id: i32) -> Result<PublicKey> {
     let message = hash_message(message);
-    let recovery_id = RecoveryId::from_i32(recovery_id).unwrap();
-    let signature = RecoverableSignature::from_compact(signature, recovery_id).unwrap();
+    let recovery_id = RecoveryId::from_i32(recovery_id)
+        .map_err(|e| UtilsError::ConversionError(e.to_string()))?;
+    let signature = RecoverableSignature::from_compact(signature, recovery_id)
+        .map_err(|e| UtilsError::VerifyError(e.to_string()))?;
 
-    CONTEXT.recover_ecdsa(&message, &signature).unwrap()
+    Ok(CONTEXT
+        .recover_ecdsa(&message, &signature)
+        .map_err(|e| UtilsError::RecoverError(e.to_string()))?)
 }
 
 /// Recover the address of the public key using a recoverable signature and signed message
 ///
 /// ```rust
-/// use crypto::{keypair, public_key_address, recover_address, sign_recovery};
+/// use utils::crypto::{keypair, public_key_address, recover_address, sign_recovery};
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
 /// let signature = sign_recovery(message, &private_key);
 /// let (recovery_id, serialized_signature) = signature.serialize_compact();
-/// let recover_address = recover_address(message, &serialized_signature, recovery_id.to_i32());
+/// let recover_address = recover_address(message, &serialized_signature, recovery_id.to_i32()).unwrap();
 /// assert_eq!(recover_address, public_key_address(&public_key));
 /// ```
-pub fn recover_address(message: &[u8], signature: &[u8], recovery_id: i32) -> Address {
-    let public_key = recover_public_key(message, signature, recovery_id);
-    public_key_address(&public_key)
+pub fn recover_address(message: &[u8], signature: &[u8], recovery_id: i32) -> Result<Address> {
+    let public_key = recover_public_key(message, signature, recovery_id)?;
+    Ok(public_key_address(&public_key))
 }
 
 // Helper function to hash bytes and convert to a Message
 pub fn hash_message(message: &[u8]) -> Message {
-    let hashed = keccak256(message);
+    let hashed = hash(message);
     Message::from_slice(&hashed).unwrap()
 }
 
@@ -202,8 +210,12 @@ pub fn hash_message(message: &[u8]) -> Message {
 /// consumed all list items (`list_size`).
 pub fn rlp_encode<T: Encodable>(items: Vec<T>, signature: Option<&Signature>) -> RlpStream {
     let mut stream = RlpStream::new();
+    let mut list_size = items.len();
 
-    let list_size = if signature.is_some() { 0 } else { 6 };
+    if signature.is_some() {
+        list_size += 3
+    }
+
     stream.begin_list(list_size);
 
     items.iter().for_each(|item| {
@@ -234,12 +246,12 @@ mod tests {
     #[test]
     fn it_hashes() {
         let message = b"The message";
-        let hashed = keccak256(message);
+        let hashed = hash(message);
         assert_eq!(
             hashed,
             [
-                174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
-                197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
+                249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
+                43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
             ]
         );
     }
@@ -251,12 +263,12 @@ mod tests {
         let signature = sign_recovery(message, &secret_key);
         let (recovery_id, serialized_signature) = signature.serialize_compact();
         let recovered_public_key =
-            recover_public_key(message, &serialized_signature, recovery_id.to_i32());
+            recover_public_key(message, &serialized_signature, recovery_id.to_i32()).unwrap();
 
         assert_eq!(recovered_public_key, public_key);
 
         let recovered_address =
-            recover_address(message, &serialized_signature, recovery_id.to_i32());
+            recover_address(message, &serialized_signature, recovery_id.to_i32()).unwrap();
         assert_eq!(recovered_address, public_key_address(&public_key));
     }
 
@@ -267,12 +279,12 @@ mod tests {
 
         let signature = sign(message, &secret_key);
         let serialized_signature = signature.serialize_compact();
-        let verified = verify(message, &serialized_signature, &public_key);
+        let verified = verify(message, &serialized_signature, &public_key).unwrap();
         assert!(verified);
 
         let signature = sign_recovery(message, &secret_key);
         let (_, serialized_signature) = signature.serialize_compact();
-        let verified = verify(message, &serialized_signature, &public_key);
+        let verified = verify(message, &serialized_signature, &public_key).unwrap();
         assert!(verified);
     }
 

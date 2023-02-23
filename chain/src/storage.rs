@@ -31,6 +31,10 @@ impl Storage {
         Ok(())
     }
 
+    pub(crate) fn update<K: AsRef<[u8]>, V: Serialize>(&self, key: K, value: &V) -> Result<()> {
+        self.insert(key, value)
+    }
+
     pub(crate) fn get<K: AsRef<[u8]>, V: DeserializeOwned>(&self, key: K) -> Result<V> {
         let value = self
             .db

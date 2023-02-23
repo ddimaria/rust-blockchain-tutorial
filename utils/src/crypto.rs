@@ -30,6 +30,19 @@ impl From<RecoverableSignature> for Signature {
     }
 }
 
+impl Into<RecoverableSignature> for Signature {
+    fn into(self) -> RecoverableSignature {
+        let mut signature = [0u8; 64];
+        signature[..32].copy_from_slice(self.r.as_bytes());
+        signature[32..].copy_from_slice(self.s.as_bytes());
+
+        let recovery_id: RecoveryId =
+            RecoveryId::from_i32(i32::try_from(self.v).unwrap().into()).unwrap();
+
+        RecoverableSignature::from_compact(&signature, recovery_id).unwrap()
+    }
+}
+
 impl TryInto<Vec<u8>> for Signature {
     type Error = UtilsError;
 

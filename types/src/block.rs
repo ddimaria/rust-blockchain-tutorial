@@ -33,11 +33,11 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use crypto::hash;
 use ethereum_types::{H256, U64};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ops::Deref;
+use utils::crypto::hash;
 
 use crate::error::{Result, TypeError};
 use crate::helpers::hex_to_u64;

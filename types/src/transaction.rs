@@ -8,10 +8,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use crypto::hash;
 use ethereum_types::{Address, H160, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use utils::crypto::hash;
 
 use crate::account::Account;
 use crate::block::BlockNumber;

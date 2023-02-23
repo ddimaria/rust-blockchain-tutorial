@@ -6,7 +6,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-use crypto::{hash, sign_recovery, SecretKey, Signature};
 use ethereum_types::U256;
 use jsonrpsee::rpc_params;
 use types::account::Account;
@@ -14,6 +13,7 @@ use types::block::BlockNumber;
 use types::bytes::Bytes;
 use types::helpers::to_hex;
 use types::transaction::{SignedTransaction, Transaction};
+use utils::crypto::{hash, sign_recovery, SecretKey, Signature};
 
 use crate::error::Result;
 use crate::Web3;
@@ -90,7 +90,8 @@ impl Web3 {
         let signed_transaction = sign_recovery(&encoded, &key);
         let signature: Signature = signed_transaction.into();
         let Signature { v, r, s } = signature;
-        let signature_bytes: Bytes = signature.into();
+        let signature_vec: Vec<u8> = signature.try_into().unwrap();
+        let signature_bytes: Bytes = signature_vec.into();
         let transaction_hash = hash(&signature_bytes.0).into();
 
         let signed_transaction = SignedTransaction {

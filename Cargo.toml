@@ -2,11 +2,11 @@
 members = [
     "chain",
     "contracts-wasm/erc20",
-    "crypto",
     "proc_macros",
     "runtime",
     "types",
+    "utils",
     "web3",
 ]
 
-exclude = ["client"]
+exclude = []

@@ -124,11 +124,11 @@ impl Web3 {
 mod tests {
     use super::*;
     use crate::helpers::tests::{get_contract, web3};
-    use crypto::keypair;
     use ethereum_types::U256;
     use std::time::Duration;
     use tokio::time::sleep;
     use types::transaction::Transaction;
+    use utils::crypto::keypair;
 
     async fn transaction() -> Transaction {
         let web3 = web3();

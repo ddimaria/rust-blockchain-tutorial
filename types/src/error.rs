@@ -10,17 +10,17 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TypeError {
+    #[error("Error encoding/decoding: {0}")]
+    EncodingDecodingError(String),
+
     #[error("Error converting a hex to U64: {0}")]
     HexToU64Error(String),
-
-    #[error("Error serializing or deserializing JSON data: {0}")]
-    JsonParseError(String),
 }
 
 pub type Result<T> = std::result::Result<T, TypeError>;
 
-impl From<serde_json::Error> for TypeError {
-    fn from(error: serde_json::Error) -> Self {
-        TypeError::JsonParseError(error.to_string())
+impl From<Box<bincode::ErrorKind>> for TypeError {
+    fn from(error: Box<bincode::ErrorKind>) -> Self {
+        TypeError::EncodingDecodingError(error.to_string())
     }
 }

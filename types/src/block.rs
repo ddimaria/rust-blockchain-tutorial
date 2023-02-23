@@ -128,7 +128,7 @@ impl Block {
             transactions,
         };
 
-        let serialized = bincode::serialize(&block).unwrap();
+        let serialized = bincode::serialize(&block)?;
         let hashed: H256 = hash(&serialized).into();
         block.hash = Some(hashed);
 

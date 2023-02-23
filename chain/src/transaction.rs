@@ -8,7 +8,8 @@ use types::transaction::{Transaction, TransactionReceipt};
 #[derive(Debug)]
 pub(crate) struct TransactionStorage {
     pub(crate) mempool: VecDeque<Transaction>,
-    pub(crate) processed: DashMap<H256, TransactionReceipt>,
+    pub(crate) processed: DashMap<H256, Transaction>,
+    pub(crate) receipts: DashMap<H256, TransactionReceipt>,
 }
 
 impl TransactionStorage {
@@ -16,6 +17,7 @@ impl TransactionStorage {
         Self {
             mempool: VecDeque::new(),
             processed: DashMap::new(),
+            receipts: DashMap::new(),
         }
     }
 
@@ -27,10 +29,9 @@ impl TransactionStorage {
     // get the receipt of the transaction
     pub(crate) fn get_transaction_receipt(&self, hash: &H256) -> Result<TransactionReceipt> {
         let transaction_receipt = self
-            .processed
+            .receipts
             .get(hash)
-            .ok_or_else(|| ChainError::TransactionNotFound(hash.to_string()))
-            .unwrap()
+            .ok_or_else(|| ChainError::TransactionNotFound(hash.to_string()))?
             .value()
             .clone();
 
@@ -50,7 +51,7 @@ mod tests {
         let to = Account::random();
         let value = U256::from(1u64);
 
-        Transaction::new(from, to, value, U256::zero(), None)
+        Transaction::new(from, to, value, U256::zero(), None).unwrap()
     }
 
     #[tokio::test]

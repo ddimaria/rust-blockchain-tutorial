@@ -138,7 +138,7 @@ mod tests {
         let gas_price = U256::from(1);
         let data = get_contract();
 
-        Transaction::new(from, to, U256::zero(), U256::zero(), Some(data.into()))
+        Transaction::new(from, to, U256::zero(), U256::zero(), Some(data.into())).unwrap()
     }
 
     async fn send_transaction() -> Result<H256> {

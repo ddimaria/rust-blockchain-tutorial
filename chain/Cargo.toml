@@ -13,6 +13,7 @@ futures = "0.3"
 hyper = "0.14.10"
 jsonrpsee = { version = "0.16.2", features = ["full", "server"] }
 k256 = { version = "0.11.5", default-features = false, features = ["ecdsa"] }
+lazy_static = "1.4.0"
 secp256k1 = { version = "0.24.0", features = ["recovery", "global-context"], optional = true }
 proc_macros = { path = "../proc_macros" }
 rayon = "1.5.3"
@@ -27,7 +28,7 @@ tracing-subscriber = { version = "0.3.15", features = ["env-filter"]}
 types = { path = "../types" }
 tokio = { version = "1.16", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
-lazy_static = "1.4.0"
+utils = { path = "../utils" }
 
 [dev-dependencies]
 lazy_static = "1.4.0"

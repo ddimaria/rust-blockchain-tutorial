@@ -16,6 +16,7 @@ use utils::crypto::hash;
 use crate::account::Account;
 use crate::block::BlockNumber;
 use crate::bytes::Bytes;
+use crate::error::Result;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
@@ -32,7 +33,13 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn new(from: Account, to: Account, value: U256, nonce: U256, data: Option<Bytes>) -> Self {
+    pub fn new(
+        from: Account,
+        to: Account,
+        value: U256,
+        nonce: U256,
+        data: Option<Bytes>,
+    ) -> Result<Self> {
         let mut transaction = Self {
             from,
             to,
@@ -44,11 +51,11 @@ impl Transaction {
             gas_price: U256::from(10),
         };
 
-        let serialized = bincode::serialize(&transaction).unwrap();
+        let serialized = bincode::serialize(&transaction)?;
         let hashed: H256 = hash(&serialized).into();
         transaction.hash = Some(hashed);
 
-        transaction
+        Ok(transaction)
     }
 }
 
@@ -92,22 +99,6 @@ impl From<Transaction> for TransactionRequest {
     }
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]
-// pub struct TransactionReceipt {
-//     pub block_hash: Option<H256>,
-//     pub block_number: Option<BlockNumber>,
-//     pub contract_address: Option<H160>,
-//     pub cumulative_gas_used: U256,
-//     pub gas_used: Option<U256>,
-//     pub logs: Vec<Log>,
-//     pub logs_bloom: Bloom,
-//     pub root: Option<H256>,
-//     pub status: Option<U64>,
-//     pub transaction_hash: H256,
-//     pub transaction_index: String,
-// }
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct TransactionReceipt {
@@ -117,16 +108,16 @@ pub struct TransactionReceipt {
     pub transaction_hash: H256,
 }
 
-impl From<&Transaction> for TransactionReceipt {
-    fn from(value: &Transaction) -> TransactionReceipt {
-        TransactionReceipt {
-            block_hash: value.hash,
-            block_number: Some(BlockNumber(U64::zero())),
-            contract_address: Some(value.to),
-            transaction_hash: value.hash.unwrap(),
-        }
-    }
-}
+// impl From<&Transaction> for TransactionReceipt {
+//     fn from(value: &Transaction) -> TransactionReceipt {
+//         TransactionReceipt {
+//             block_hash: value.hash,
+//             block_number: Some(BlockNumber(U64::zero())),
+//             contract_address: Some(value.to),
+//             transaction_hash: value.hash.unwrap(),
+//         }
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all(serialize = "snake_case", deserialize = "camelCase"))]

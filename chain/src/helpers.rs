@@ -74,9 +74,9 @@ pub mod tests {
         blockchain.accounts.add_account_balance(&id_1, 100).unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);
-        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None);
+        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None).unwrap();
 
-        blockchain.new_block(vec![transaction.into()]);
+        blockchain.new_block(vec![transaction]);
 
         (Arc::new(Mutex::new(blockchain)), id_1, id_2)
     }

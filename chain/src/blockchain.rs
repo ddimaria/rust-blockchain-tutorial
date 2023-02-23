@@ -4,6 +4,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use crate::account::{AccountData, AccountStorage};
@@ -15,8 +16,8 @@ use ethereum_types::{H160, H256, U256};
 use tokio::sync::Mutex;
 use types::block::{Block, BlockNumber};
 use types::bytes::Bytes;
-use types::transaction::Transaction;
-use types::transaction::{Transaction as TransactionType, TransactionReceipt, TransactionRequest};
+use types::transaction::{Transaction, TransactionReceipt, TransactionRequest};
+use utils::crypto::hash;
 
 #[derive(Debug)]
 pub(crate) struct BlockChain {
@@ -53,7 +54,7 @@ impl BlockChain {
         }
     }
 
-    pub(crate) fn new_block(&mut self, transactions: Vec<TransactionType>) -> Result<H256> {
+    pub(crate) fn new_block(&mut self, transactions: Vec<Transaction>) -> Result<BlockNumber> {
         // TODO(ddimaria): make this an atomic operation
         // TODO(ddimaria): handle unwraps
         let current_block = self.get_current_block()?;
@@ -73,7 +74,7 @@ impl BlockChain {
         let hash = block.hash.unwrap();
         self.blocks.push(block);
 
-        Ok(hash)
+        Ok(BlockNumber(number))
     }
 
     pub(crate) async fn send_transaction(
@@ -89,7 +90,8 @@ impl BlockChain {
             transaction_request.value.unwrap_or(U256::zero()),
             nonce,
             transaction_request.data,
-        );
+        )
+        .unwrap();
 
         // TODO(ddimaria): handle unwraps
         let hash = transaction.hash.unwrap();
@@ -125,42 +127,87 @@ impl BlockChain {
     // TODO(ddimaria): actually process the transaction
     pub(crate) async fn process_transactions(&mut self) {
         loop {
-            let transaction = self.transactions.lock().await.mempool.pop_front();
-            if let Some(transaction) = transaction {
+            // Bulk drain the current queue to fit into the new block
+            // This is not safe as we lose transactions if a panic occurs
+            // or if the program is halted
+            let transactions = self
+                .transactions
+                .lock()
+                .await
+                .mempool
+                .drain(0..)
+                .collect::<VecDeque<_>>();
+            let mut receipts: Vec<TransactionReceipt> = vec![];
+
+            for transaction in transactions.iter() {
                 tracing::info!("Processing Transaction {:?}", transaction);
 
-                let mut transaction_receipt: TransactionReceipt = (&transaction).into();
-
-                // if this is a contract deployment, create an account
-                if transaction.data.is_some() {
+                let contract_address = transaction.data.as_ref().and_then(|_| {
                     // TODO(ddimaria): create deterministic contract address below
                     // let sender = self.accounts.get_account(&transaction.from).unwrap();
                     // let contract_address = format!("{}{}", transaction.from, sender.nonce);
-                    // let hash = Blake2s256::digest(&contract_address);
+                    // let contract_hash = hash(&contract_address);
 
+                    // create a contract account
                     let account_data = AccountData::new(transaction.data.clone());
                     if let Ok(contract_address) = self.accounts.add_account(None, &account_data) {
-                        transaction_receipt.contract_address = Some(contract_address);
+                        Some(contract_address)
                     } else {
                         tracing::error!("Error creating a contract account {:?}", account_data);
+                        None
                     }
-                }
+                });
+
+                let transaction_hash = transaction.hash.unwrap();
+                let transaction_receipt = TransactionReceipt {
+                    block_hash: None,
+                    block_number: None,
+                    contract_address,
+                    transaction_hash,
+                };
+                receipts.push(transaction_receipt);
 
                 self.transactions
                     .clone()
                     .lock()
                     .await
                     .processed
-                    .insert(transaction.hash.unwrap(), transaction_receipt);
+                    .insert(transaction_hash, transaction.to_owned());
 
                 let transactions = self.transactions.lock().await;
                 tracing::info!(
-                    "Transaction storage: mempool {:?}, processed {:?}",
+                    "Transaction storage: mempool {:?}, processed {:?}, receipts {:?}",
                     transactions.mempool.len(),
-                    transactions.processed.len()
+                    transactions.processed.len(),
+                    transactions.receipts.len()
                 );
-            } else {
-                break;
+            }
+
+            // We've processed all transactions, now calculate the block hash
+            // from the transaction hashes.  This is a naive approach.  The
+            // transactions should be the leaves of a merkle tree and the block
+            // hash should be the merkle root.
+            let hashes = receipts
+                .iter()
+                .map(|transaction| transaction.transaction_hash.to_string())
+                .reduce(|cur: String, nxt: String| cur + &nxt)
+                .unwrap_or("".into());
+            let block_hash = hash(&hashes.into_bytes());
+            let block_number = self.new_block(transactions.into()).unwrap();
+
+            tracing::info!("Created new block {}", block_number.0);
+
+            // now add the block number and hash to the receipts
+            for receipt in receipts.iter_mut() {
+                receipt.block_number = Some(block_number.to_owned());
+                receipt.block_hash = Some(block_hash.into());
+
+                self.transactions
+                    .clone()
+                    .lock()
+                    .await
+                    .receipts
+                    .insert(receipt.transaction_hash, receipt.to_owned());
             }
         }
     }

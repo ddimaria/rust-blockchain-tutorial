@@ -81,7 +81,7 @@ pub mod tests {
     // use jsonrpsee::{core::client::ClientT, rpc_params};
     // use types::account::Account;
 
-    // use crate::helpers::tests::{assert_vec_eq, client, server, setup};
+    // use crate::helpers::tests::{assert_vec_contains, client, server, setup};
 
     // #[tokio::test]
     // async fn creates_a_server() {
@@ -92,6 +92,6 @@ pub mod tests {
     //         .await
     //         .unwrap();
 
-    //     assert_vec_eq(response, vec![id_1, id_2]);
+    //     assert_vec_contains(response, vec![id_1, id_2]);
     // }
 }

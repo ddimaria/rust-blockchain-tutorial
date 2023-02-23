@@ -42,8 +42,9 @@ pub(crate) fn eth_get_block_by_number(module: &mut RpcModule<Context>) -> Result
     module.register_async_method("eth_getBlockByNumber", |params, blockchain| async move {
         let block_number = params.one::<BlockNumber>()?;
         let index = (*block_number).as_usize();
+        let block = blockchain.lock().await.blocks[index - 1].clone();
 
-        Ok(blockchain.lock().await.blocks[index - 1].clone())
+        Ok(block)
     })?;
 
     Ok(())
@@ -82,7 +83,7 @@ pub(crate) fn eth_get_balance_by_block(module: &mut RpcModule<Context>) -> Resul
             let block_number = blockchain
                 .lock()
                 .await
-                .get_block_number(&block)
+                .parse_block_number(&block)
                 .map_err(|e| JsonRpseeError::Custom(e.to_string()))?;
 
             let balance = blockchain
@@ -126,7 +127,8 @@ pub(crate) fn eth_send_raw_transaction(module: &mut RpcModule<Context>) -> Resul
                 .lock()
                 .await
                 .send_raw_transaction(raw_transaction)
-                .await;
+                .await
+                .map_err(|e| Error::Custom(e.to_string()))?;
 
             Ok(transaction_hash)
         },
@@ -165,7 +167,7 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
         let _block_number = blockchain
             .lock()
             .await
-            .get_block_number(&block)
+            .parse_block_number(&block)
             .map_err(|e| JsonRpseeError::Custom(e.to_string()))?;
 
         let code_hash = blockchain
@@ -189,7 +191,7 @@ pub mod tests {
     use types::account::Account;
 
     use super::*;
-    use crate::helpers::tests::{assert_vec_eq, setup};
+    use crate::helpers::tests::{assert_vec_contains, setup};
 
     #[tokio::test]
     async fn gets_all_accounts() {
@@ -200,7 +202,7 @@ pub mod tests {
         println!("**{:?}", response);
         println!("**{:?}", vec![id_1, id_2]);
 
-        assert_vec_eq(response, vec![id_1, id_2]);
+        assert_vec_contains(response, vec![id_1, id_2]);
     }
 
     #[tokio::test]

@@ -41,6 +41,8 @@ impl TransactionStorage {
 
 #[cfg(test)]
 mod tests {
+    use crate::blockchain::tests::{assert_receipt, new_blockchain};
+
     use super::*;
     use ethereum_types::U256;
     use std::convert::From;
@@ -55,8 +57,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn creates_a_transaction() {
+    async fn sends_a_transaction() {
+        let mut transaction_storage = TransactionStorage::new();
         let transaction = new_transaction();
-        // println!("{:?}", transaction);
+        assert_eq!(transaction_storage.mempool.len(), 0);
+
+        transaction_storage.send_transaction(transaction);
+        assert_eq!(transaction_storage.mempool.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn gets_a_transaction_receipt() {
+        let mut blockchain = new_blockchain();
+        let transaction = new_transaction();
+        let transaction_hash = transaction.hash.unwrap();
+
+        blockchain
+            .transactions
+            .lock()
+            .await
+            .send_transaction(transaction);
+
+        assert_receipt(&mut blockchain, transaction_hash).await;
     }
 }

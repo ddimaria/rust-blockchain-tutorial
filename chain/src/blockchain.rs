@@ -16,7 +16,7 @@ use ethereum_types::{H160, H256, U256};
 use tokio::sync::Mutex;
 use types::block::{Block, BlockNumber};
 use types::bytes::Bytes;
-use types::transaction::{Transaction, TransactionReceipt, TransactionRequest};
+use types::transaction::{SignedTransaction, Transaction, TransactionReceipt, TransactionRequest};
 use utils::crypto::hash;
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl BlockChain {
         Ok(block.to_owned())
     }
 
-    pub(crate) fn get_block_number(&self, block_number: &str) -> Result<BlockNumber> {
+    pub(crate) fn parse_block_number(&self, block_number: &str) -> Result<BlockNumber> {
         if block_number == String::from("latest") {
             Ok(BlockNumber(self.get_current_block()?.number))
         } else {
@@ -71,12 +71,12 @@ impl BlockChain {
         )
         .unwrap();
 
-        let hash = block.hash.unwrap();
         self.blocks.push(block);
 
         Ok(BlockNumber(number))
     }
 
+    // TODO(ddimaria): remove auto nonce incrementing and rely on clients to increment
     pub(crate) async fn send_transaction(
         &mut self,
         transaction_request: TransactionRequest,
@@ -102,45 +102,46 @@ impl BlockChain {
         hash
     }
 
-    pub(crate) async fn send_raw_transaction(&mut self, transaction: Bytes) /*-> H256*/
-    {
-        // let from = transaction_request.from.unwrap_or(H160::zero());
-        // let nonce = self.accounts.increment_nonce(&from).unwrap().into();
+    pub(crate) async fn send_raw_transaction(&mut self, transaction: Bytes) -> Result<H256> {
+        let signed_transaction: SignedTransaction = bincode::deserialize(&transaction.0).unwrap();
 
-        // let transaction: Transaction = Transaction::new(
-        //     from,
-        //     transaction_request.to.unwrap_or(H160::zero()),
-        //     transaction_request.value.unwrap_or(U256::zero()),
-        //     nonce,
-        //     transaction_request.data,
-        // );
+        let verified = Transaction::verify(signed_transaction.clone())
+            .map_err(|e| ChainError::TransactionNotVerified(e.to_string()))?;
 
-        // // TODO(ddimaria): handle unwraps
-        // let hash = transaction.hash.unwrap();
+        if !verified {
+            return Err(ChainError::TransactionNotVerified(
+                signed_transaction.transaction_hash.to_string(),
+            ));
+        }
 
-        // // add to the transaction mempool
-        // self.transactions.lock().await.send_transaction(transaction);
+        let transaction: Transaction = signed_transaction.try_into().unwrap();
 
-        // hash
+        Ok(self.send_transaction(transaction.into()).await)
     }
 
     // TODO(ddimaria): actually process the transaction
     pub(crate) async fn process_transactions(&mut self) {
-        loop {
-            // Bulk drain the current queue to fit into the new block
-            // This is not safe as we lose transactions if a panic occurs
-            // or if the program is halted
-            let transactions = self
-                .transactions
-                .lock()
-                .await
-                .mempool
-                .drain(0..)
-                .collect::<VecDeque<_>>();
+        // Bulk drain the current queue to fit into the new block
+        // This is not safe as we lose transactions if a panic occurs
+        // or if the program is halted
+        let transactions = self
+            .transactions
+            .lock()
+            .await
+            .mempool
+            .drain(0..)
+            .collect::<VecDeque<_>>();
+
+        if transactions.len() > 0 {
             let mut receipts: Vec<TransactionReceipt> = vec![];
 
+            tracing::info!(
+                "Processing {} transactions for new block",
+                transactions.len()
+            );
+
             for transaction in transactions.iter() {
-                tracing::info!("Processing Transaction {:?}", transaction);
+                tracing::info!("Processing Transaction {:?}", transaction.hash);
 
                 let contract_address = transaction.data.as_ref().and_then(|_| {
                     // TODO(ddimaria): create deterministic contract address below
@@ -173,14 +174,6 @@ impl BlockChain {
                     .await
                     .processed
                     .insert(transaction_hash, transaction.to_owned());
-
-                let transactions = self.transactions.lock().await;
-                tracing::info!(
-                    "Transaction storage: mempool {:?}, processed {:?}, receipts {:?}",
-                    transactions.mempool.len(),
-                    transactions.processed.len(),
-                    transactions.receipts.len()
-                );
             }
 
             // We've processed all transactions, now calculate the block hash
@@ -193,9 +186,13 @@ impl BlockChain {
                 .reduce(|cur: String, nxt: String| cur + &nxt)
                 .unwrap_or("".into());
             let block_hash = hash(&hashes.into_bytes());
-            let block_number = self.new_block(transactions.into()).unwrap();
+            let block_number = self.new_block(transactions.clone().into()).unwrap();
 
-            tracing::info!("Created new block {}", block_number.0);
+            tracing::info!(
+                "Created block {} with {} transactions",
+                block_number.0,
+                transactions.len()
+            );
 
             // now add the block number and hash to the receipts
             for receipt in receipts.iter_mut() {
@@ -209,6 +206,14 @@ impl BlockChain {
                     .receipts
                     .insert(receipt.transaction_hash, receipt.to_owned());
             }
+
+            let storage = self.transactions.lock().await;
+            tracing::info!(
+                "Transaction storage: mempool {:?}, processed {:?}, receipts {:?}",
+                storage.mempool.len(),
+                storage.processed.len(),
+                storage.receipts.len()
+            );
         }
     }
 
@@ -227,12 +232,71 @@ impl BlockChain {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
+    use utils::crypto::keypair;
+
     use super::*;
     use crate::helpers::tests::STORAGE;
 
+    pub(crate) fn new_blockchain() -> BlockChain {
+        BlockChain::new((*STORAGE).clone()).unwrap()
+    }
+
+    fn new_transaction(blockchain: &BlockChain) -> Transaction {
+        let from = blockchain.accounts.get_all_accounts()[0];
+        let to = blockchain.accounts.get_all_accounts()[1];
+        let data = vec![0, 1];
+
+        Transaction::new(from, to, U256::zero(), U256::zero(), Some(data.into())).unwrap()
+    }
+
+    pub(crate) async fn assert_receipt(blockchain: &mut BlockChain, transaction_hash: H256) {
+        blockchain.process_transactions().await;
+
+        let receipt = blockchain
+            .transactions
+            .lock()
+            .await
+            .get_transaction_receipt(&transaction_hash);
+
+        assert!(receipt.is_ok());
+    }
+
     #[tokio::test]
     async fn creates_a_blockchain() {
-        let blockchain = BlockChain::new((*STORAGE).clone());
+        new_blockchain();
+    }
+
+    #[tokio::test]
+    async fn creates_and_gets_a_block() {
+        let mut blockchain = BlockChain::new((*STORAGE).clone()).unwrap();
+        let block_number = blockchain.get_current_block().unwrap().number;
+        let response = blockchain.new_block(vec![new_transaction(&blockchain)]);
+        assert!(response.is_ok());
+
+        let new_block_number = blockchain.get_current_block().unwrap().number;
+        assert_eq!(new_block_number, block_number + 1);
+    }
+
+    #[tokio::test]
+    async fn sends_a_transaction() {
+        let mut blockchain = new_blockchain();
+        let transaction = new_transaction(&blockchain);
+        let transaction_hash = blockchain.send_transaction(transaction.into()).await;
+
+        assert_receipt(&mut blockchain, transaction_hash).await;
+    }
+
+    #[tokio::test]
+    async fn send_a_raw_transaction() {
+        let mut blockchain = new_blockchain();
+        let (secret_key, _) = keypair();
+        let transaction = new_transaction(&blockchain);
+        let signed_transaction = transaction.sign(secret_key).unwrap();
+        let encoded = bincode::serialize(&signed_transaction).unwrap();
+        let response = blockchain.send_raw_transaction(encoded.into()).await;
+        assert!(response.is_ok());
+
+        assert_receipt(&mut blockchain, response.unwrap()).await;
     }
 }

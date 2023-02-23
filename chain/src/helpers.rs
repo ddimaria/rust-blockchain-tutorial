@@ -81,7 +81,7 @@ pub mod tests {
         (Arc::new(Mutex::new(blockchain)), id_1, id_2)
     }
 
-    pub(crate) fn assert_vec_eq<T: std::cmp::PartialEq>(vec_1: Vec<T>, vec_2: Vec<T>) {
+    pub(crate) fn assert_vec_contains<T: std::cmp::PartialEq>(vec_1: Vec<T>, vec_2: Vec<T>) {
         assert!(vec_2.iter().all(|item| vec_1.contains(item)));
     }
 }

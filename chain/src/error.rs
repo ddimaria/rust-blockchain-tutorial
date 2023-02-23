@@ -7,14 +7,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 use jsonrpsee::core::Error as JsonRpseeError;
+use serde::{Deserialize, Serialize};
 use std::{net::AddrParseError, sync::PoisonError};
 use thiserror::Error;
 use tracing_subscriber::{
     filter::{FromEnvError, ParseError as TracingParseError},
     util::TryInitError as TracingTryInitError,
 };
+use types::error::TypeError;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize, Deserialize)]
 pub enum ChainError {
     #[error("Error parsing address {0}")]
     AddrParseError(String),
@@ -57,6 +59,9 @@ pub enum ChainError {
 
     #[error("Transaction {0} not found")]
     TransactionNotFound(String),
+
+    #[error("Transaction {0} cannot be verified")]
+    TransactionNotVerified(String),
 }
 
 /// Utility result type to be used throughout
@@ -100,6 +105,12 @@ impl Into<JsonRpseeError> for ChainError {
 
 impl<T> From<PoisonError<T>> for ChainError {
     fn from(error: PoisonError<T>) -> Self {
+        ChainError::JsonRpseeError(error.to_string())
+    }
+}
+
+impl From<TypeError> for ChainError {
+    fn from(error: TypeError) -> Self {
         ChainError::JsonRpseeError(error.to_string())
     }
 }

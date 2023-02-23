@@ -70,10 +70,11 @@ impl AccountStorage {
     }
 
     pub(crate) fn increment_nonce(&mut self, key: &Account) -> Result<u64> {
-        let mut account = self.get_account(&key)?;
-        account.nonce += 1;
+        let mut account_data = self.get_account(&key)?;
+        account_data.nonce += 1;
+        self.accounts.update(key, &account_data)?;
 
-        Ok(account.nonce)
+        Ok(account_data.nonce)
     }
 
     pub(crate) fn get_account_balance(&self, key: &Account) -> Result<u64> {
@@ -88,5 +89,54 @@ impl AccountStorage {
     ) -> Result<u64> {
         let balance = self.get_account(key)?.balance;
         Ok(balance)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ethereum_types::H160;
+
+    use crate::helpers::tests::{assert_vec_contains, STORAGE};
+
+    use super::*;
+
+    fn new_account_storage() -> AccountStorage {
+        AccountStorage::new((*STORAGE).clone())
+    }
+
+    fn add_account(account_storage: &AccountStorage) -> (AccountData, H160) {
+        let account_data = AccountData::new(None);
+        let id = account_storage.add_account(None, &account_data).unwrap();
+
+        (account_data, id)
+    }
+
+    #[test]
+    fn it_adds_and_gets_an_account() {
+        let account_storage = new_account_storage();
+        let (account_data, id) = add_account(&account_storage);
+        let reteived_account_data = account_storage.get_account(&id).unwrap();
+        assert_eq!(reteived_account_data, account_data);
+    }
+
+    #[test]
+    fn it_increments_a_nonce() {
+        let mut account_storage = new_account_storage();
+        let (_, id) = add_account(&account_storage);
+        let reteived_account_data = account_storage.get_account(&id).unwrap();
+        assert_eq!(reteived_account_data.nonce, 0);
+
+        account_storage.increment_nonce(&id).unwrap();
+        let reteived_account_data = account_storage.get_account(&id).unwrap();
+        assert_eq!(reteived_account_data.nonce, 1);
+    }
+
+    #[test]
+    fn it_gets_all_accounts() {
+        let account_storage = new_account_storage();
+        let (_, id_1) = add_account(&account_storage);
+        let (_, id_2) = add_account(&account_storage);
+        let accounts = account_storage.get_all_accounts();
+        assert_vec_contains(accounts, vec![id_1, id_2]);
     }
 }

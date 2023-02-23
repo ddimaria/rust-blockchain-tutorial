@@ -45,6 +45,7 @@ impl Web3 {
         let transaction_request = to_value(&transaction_request)?;
         let params = rpc_params![transaction_request];
         let response = self.send_rpc("eth_sendTransaction", params).await?;
+        println!("{:?}", response);
         let tx_hash: H256 = serde_json::from_value(response)?;
 
         Ok(tx_hash)
@@ -79,6 +80,7 @@ impl Web3 {
         let transaction_request = to_value(&transaction_request)?;
         let params = rpc_params![transaction_request];
         let response = self.send_rpc("eth_sendRawTransaction", params).await?;
+        println!("{:?}", response);
         let tx_hash: H256 = serde_json::from_value(response)?;
 
         Ok(tx_hash)
@@ -123,7 +125,7 @@ impl Web3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::tests::{get_contract, web3};
+    use crate::helpers::tests::web3;
     use ethereum_types::U256;
     use std::time::Duration;
     use tokio::time::sleep;
@@ -134,11 +136,8 @@ mod tests {
         let web3 = web3();
         let from = web3.get_all_accounts().await.unwrap()[0];
         let to = web3.get_all_accounts().await.unwrap()[1];
-        let gas = U256::from(1_000_000);
-        let gas_price = U256::from(1);
-        let data = get_contract();
 
-        Transaction::new(from, to, U256::zero(), U256::zero(), Some(data.into())).unwrap()
+        Transaction::new(from, to, U256::zero(), U256::zero(), None).unwrap()
     }
 
     async fn send_transaction() -> Result<H256> {
@@ -148,6 +147,8 @@ mod tests {
 
     #[tokio::test]
     async fn it_sends_a_transaction() {
+        let response = send_transaction().await;
+        assert!(response.is_ok());
         let response = send_transaction().await;
         assert!(response.is_ok());
     }
@@ -168,7 +169,8 @@ mod tests {
         let (secret_key, _) = keypair();
         let transaction = transaction().await;
         let signed_transaction = web3().sign_transaction(transaction, secret_key).unwrap();
-        let response = web3().send_raw(signed_transaction.raw_transaction).await;
+        let encoded = bincode::serialize(&signed_transaction).unwrap();
+        let response = web3().send_raw(encoded.into()).await;
         assert!(response.is_ok());
     }
 }

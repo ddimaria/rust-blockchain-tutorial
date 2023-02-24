@@ -7,6 +7,7 @@ pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
+use serde::Serialize;
 
 // reuse context throughout
 lazy_static! {
@@ -96,11 +97,21 @@ pub fn keypair() -> (SecretKey, PublicKey) {
 /// let (private_key, public_key) = keypair();
 /// let address = public_key_address(&public_key);
 /// ```
-pub fn public_key_address(key: &PublicKey) -> H160 {
-    let public_key = key.serialize_uncompressed();
-    let hash = hash(&public_key[1..]);
-
+pub fn to_address(item: &[u8]) -> H160 {
+    let hash = hash(&item[1..]);
     Address::from_slice(&hash[12..])
+}
+
+/// Convert a public key into an address using the last 20 bytes of the hash
+///
+/// ```rust
+/// use utils::crypto::{keypair, public_key_address};
+///
+/// let (private_key, public_key) = keypair();
+/// let address = public_key_address(&public_key);
+/// ```
+pub fn public_key_address(key: &PublicKey) -> H160 {
+    to_address(&key.serialize_uncompressed())
 }
 
 /// Convert a private key into an address using the last 20 bytes of the hash

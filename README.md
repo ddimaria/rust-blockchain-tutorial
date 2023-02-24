@@ -3,29 +3,34 @@
 
 _WORK IN PROGRESS_
 
-This repo is designed to train entry-level Rust developers on intermediate and advanced Rust development in the context of Ethereum blockchain development.
-While learning Rust, the developer will also explore Ethereum concepts and implement a naive Web3 driver, a rpc client, and even build a simple blockchain.
+This repo is designed to train Rust developers on intermediate and advanced Rust development and help understand the primary concepts in Ethereum blockchain development.
 
 <!-- omit in toc -->
 ## Roadmap
 
 - [x] Ethereum Types
-- [x] Basic Chain Node
-- [x] Basic Web3 Client
+- [x] Cryptography Primitives
+- [x] Chain Node
+- [x] Web3 Client
 - [x] WASM/WASI VM for Contract Execution (wasmtime)
+- [ ] Rust Smart Contracts
+  - [x] Base Implementation
+  - [ ] Fungible
+  - [ ] Non Fungible
+  - [ ] Multi Asset
 - [ ] P2P Networking between Nodes (libp2p)
 - [ ] PoS Consensus
 - [x] Persistent Disk Chain State (RocksDB)
-- [ ] Intermediate Chain Node
-- [ ] Intermediate Web3 Client
 - [ ] Full Tutorial
 - [ ] CI
 
 <!-- omit in toc -->
 ## Table of Contents
 
-- [Deep Dive](#deep-dive)
+- [Introduction](#introduction)
+- [Ethereum Primitives](#ethereum-primitives)
   - [Accounts](#accounts)
+  - [Transactions](#transactions)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -43,11 +48,23 @@ While learning Rust, the developer will also explore Ethereum concepts and imple
 - [Compiling](#compiling)
 - [Running Tests](#running-tests)
 
-## Deep Dive
+## Introduction
+
+When I first entered the crypto space, I had never used Rust and was unfamiliar with blockchain technology, let alone any knowledge of Ethereum concepts.  This is the tutorial I wish I had back then, and will hopefully guide Rust developers along their blockchain journey.
+
+While the concepts explored here are based on Ethereum, there are many instances where they diverge from it.  For example, structs are simplified to just show general concepts.  Different hashing and consensus algorithims are implemented.  The most divergent area are smart contracts.  We'll explore Rust-based smart contracts that run on a WASM virtual machine.  I went in this direction to keep the language choice homogenious.  The overall approach is similar to Solidity, though the implementation is very different.
+
+## Ethereum Primitives
 
 ### Accounts
 
-In Ethereum, `Accounts` are either `Externally Owned Accounts` or `Contract Accounts`.  
+In Ethereum, `Accounts` are either `Externally Owned Accounts` or `Contract Accounts`.  Addresses are hex encoded: `0x71562b71999873DB5b286dF957af199Ec94617F7`.
+
+```rust
+type Account = ethereum_types::Address;
+```
+
+For a given address, data associated with the account is stored on chain:
 
 ```rust
 struct AccountData {
@@ -55,9 +72,15 @@ struct AccountData {
     balance: u64,
     code_hash: Option<Bytes>,
 }
+
+impl AccountData {
+    fn is_contract(&self) -> bool {
+        self.code_hash.is_some()
+    }
+}
 ```
 
-Externally Owned Accounts are simply a public address.  This address is a 20 byte hash (`H160`), and is created by applying a Keccak256 hash function on the public key, taking the last 20 bytes.  This is how we create an Ethereum Account in Rust:
+Externally Owned Accounts are simply a public address.  This address is a 20 byte hash (`H160`), and is created by applying a hash function on the public key, taking the last 20 bytes.  This is how we create an Ethereum Account in Rust:
 
 ```rust
 use crypto::{keypair, public_key_address};
@@ -67,15 +90,47 @@ let address = public_key_address(&public_key);
 
 fn public_key_address(key: &PublicKey) -> H160 {
     let public_key = key.serialize_uncompressed();
-    let hash = keccak256(&public_key[1..]);
+    let hash = hash(&public_key[1..]);
 
     Address::from_slice(&hash[12..])
 }
 ```
 
-Since we can't derive the public key from the hash, the public key is not known until a transaction is validated.  We'll dig a bit more into this in the Transaction section.
+Public keys are not stored on the chain.  Since we can't derive the public key from the hash, the public key is not known until a signed transaction is validated.  We'll dig a bit more into this in the Transaction section.
 
-Contract Accounts are also just an address, but have a code hash associated with them.  A contract's address is created by [RLP encoding](https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/) the sender's address and their current nonce.  This encoding is then hashed using Keccak256 hash function, taking the last 20 bytes.  This process is similiar to the Externally Owned Account creation, but the input is a RLP encoded
+Contract Accounts are also just an address, but have a code hash associated with them.  A contract's address is created by encoding the sender's address and their current nonce.  This encoding is then hashed using a hash function, taking the last 20 bytes.  This process is similiar to the Externally Owned Account creation, but the input is an encoded tuple.
+
+```rust
+use crypto::{to_address};
+use web3::web3;
+
+let account = MY_ACCOUNT_ADDRESS;
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let nonce = web3().get_transaction_count(account).await.unwrap();
+let serialized: Vec<u8> = bincode::serialize(&(account, nonce)).unwrap();
+let contract_address = to_address(&serialized).unwrap();
+```
+
+It's important to note that addresses (accounts) are iniatiated outside of a blockchain.  They can be generated in many ways, though the most common is to use a wallet.  In our examples, we'll sign them offline using the provided tools in the `crypto` crate.  Accounts are stored on the chain when they are used for the first time.
+
+Accounts are also deterministic.  That is, given the same inputs, the same address is always generated.
+
+### Transactions
+
+Transactions are the heart of a blockchain.  Without them, the chain's state would remain unchanged.  Transactions drive state changes.
+
+```rust
+pub struct Transaction {
+    pub data: Option<Bytes>,
+    pub from: Address,
+    pub gas: U256,
+    pub gas_price: U256,
+    pub hash: Option<H256>,
+    pub nonce: U256,
+    pub to: Address,
+    pub value: U256,
+}
+```
 
 ## Organization
 

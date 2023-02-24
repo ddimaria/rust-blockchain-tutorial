@@ -124,12 +124,12 @@ pub struct SignedTransaction {
     pub transaction_hash: H256,
 }
 
-impl Into<Signature> for SignedTransaction {
-    fn into(self) -> Signature {
+impl From<SignedTransaction> for Signature {
+    fn from(value: SignedTransaction) -> Self {
         Signature {
-            v: self.v,
-            r: self.r,
-            s: self.s,
+            v: value.v,
+            r: value.r,
+            s: value.s,
         }
     }
 }

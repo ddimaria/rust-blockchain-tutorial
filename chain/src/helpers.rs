@@ -42,7 +42,7 @@ pub mod tests {
 
     use crate::{account::AccountData, blockchain::BlockChain, server::serve, storage::Storage};
 
-    static ADDRESS: &'static str = "127.0.0.1:8545";
+    static ADDRESS: &str = "127.0.0.1:8545";
 
     lazy_static! {
         pub(crate) static ref STORAGE: Arc<Storage> = Arc::new(Storage::new(Some("test")).unwrap());

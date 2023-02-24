@@ -112,7 +112,7 @@ impl Web3 {
     /// let receipt = web3.transaction_receipt(tx_hash).await;
     /// ```
     pub async fn transaction_receipt(&self, tx_hash: H256) -> Result<TransactionReceipt> {
-        let tx_hash = to_value(&tx_hash)?;
+        let tx_hash = to_value(tx_hash)?;
         let params = rpc_params![tx_hash];
         let response = self.send_rpc("eth_getTransactionReceipt", params).await?;
         let receipt = serde_json::from_value(response)?;

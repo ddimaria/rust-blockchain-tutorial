@@ -31,8 +31,6 @@ impl From<Box<bincode::ErrorKind>> for TypeError {
 
 impl From<UtilsError> for TypeError {
     fn from(error: UtilsError) -> Self {
-        match error {
-            _ => TypeError::UtilError(error.to_string()),
-        }
+        TypeError::UtilError(error.to_string())
     }
 }

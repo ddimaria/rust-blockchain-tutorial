@@ -45,7 +45,7 @@ impl BlockChain {
     }
 
     pub(crate) fn parse_block_number(&self, block_number: &str) -> Result<BlockNumber> {
-        if block_number == String::from("latest") {
+        if block_number == "latest" {
             Ok(BlockNumber(self.get_current_block()?.number))
         } else {
             Ok(block_number
@@ -62,7 +62,7 @@ impl BlockChain {
             .hash
             .ok_or_else(|| ChainError::MissingHash(current_block.number.to_string()))?;
         let nonce_serialized = format!("{:?}", (number, parent_hash, &transactions));
-        let nonce = Blake2s256::digest(&nonce_serialized);
+        let nonce = Blake2s256::digest(nonce_serialized);
 
         let block = Block::new(
             number,
@@ -132,7 +132,7 @@ impl BlockChain {
             .drain(0..)
             .collect::<VecDeque<_>>();
 
-        if transactions.len() > 0 {
+        if !transactions.is_empty() {
             let mut receipts: Vec<TransactionReceipt> = vec![];
 
             tracing::info!(
@@ -186,7 +186,7 @@ impl BlockChain {
                 .iter()
                 .map(|transaction| transaction.transaction_hash.to_string())
                 .reduce(|cur: String, nxt: String| cur + &nxt)
-                .unwrap_or("".into());
+                .unwrap_or_else(|| "".into());
             let block_hash = hash(&hashes.into_bytes());
             let block_number = self.new_block(transactions.clone().into())?;
 

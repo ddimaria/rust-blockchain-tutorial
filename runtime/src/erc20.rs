@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::error::Result;
 use wasmtime::{
     self,
@@ -8,25 +9,30 @@ use wit_component::ComponentEncoder;
 
 wasmtime::component::bindgen!({ path: "../contracts/erc20/erc20.wit", world: "erc20" });
 
-fn deploy<'a>(bytes: &[u8], name: &str, symbol: &str) -> Result<()> {
-    // let (mut store, contract) = load_contract(bytes)?;
-    // let res = contract.erc20.mint(&mut store, name, symbol)?;
+fn construct(bytes: &[u8], name: &str, symbol: &str) -> Result<()> {
+    let (mut store, contract) = load_contract(bytes)?;
+    // preserve for how to retrieve data from functions
+    // let res = contract.erc20.construct(&mut store, name, symbol)?;
+    contract.erc20.construct(&mut store, name, symbol)?;
 
-    // assert_eq!(res, "RustCoin");
-    // println!("Out: {}", res);
     Ok(())
 }
 
-fn mint<'a>(bytes: &[u8], address: &str, amount: u64) -> Result<()> {
+fn mint(bytes: &[u8], account: &str, amount: u64) -> Result<()> {
     let (mut store, contract) = load_contract(bytes)?;
-    let res = contract.erc20.mint(&mut store, address, amount)?;
+    contract.erc20.mint(&mut store, account, amount)?;
 
-    // assert_eq!(res, "RustCoin");
-    // println!("Out: {}", res);
-    Ok(res)
+    Ok(())
 }
 
-fn load_contract<'a>(bytes: &[u8]) -> Result<(Store<i32>, Contract)> {
+fn transfer(bytes: &[u8], to: &str, amount: u64) -> Result<()> {
+    let (mut store, contract) = load_contract(bytes)?;
+    contract.erc20.transfer(&mut store, to, amount)?;
+
+    Ok(())
+}
+
+fn load_contract(bytes: &[u8]) -> Result<(Store<i32>, Contract)> {
     let mut config = Config::new();
 
     Config::wasm_component_model(&mut config, true);

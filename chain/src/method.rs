@@ -73,6 +73,22 @@ pub(crate) fn eth_get_balance(module: &mut RpcModule<Context>) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn eth_get_transaction_count(module: &mut RpcModule<Context>) -> Result<()> {
+    module.register_async_method("eth_getTransactionCount", |params, blockchain| async move {
+        let account = params.one::<Account>()?;
+        let count = blockchain
+            .lock()
+            .await
+            .accounts
+            .get_nonce(&account)
+            .map_err(|e| Error::Custom(e.to_string()))?;
+
+        Ok(to_hex(count))
+    })?;
+
+    Ok(())
+}
+
 pub(crate) fn eth_get_balance_by_block(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method(
         "eth_getBalanceByBlock",

@@ -25,6 +25,10 @@ impl AccountData {
             code_hash,
         }
     }
+
+    pub(crate) fn is_contract(&self) -> bool {
+        self.code_hash.is_some()
+    }
 }
 
 #[derive(Debug)]
@@ -84,6 +88,11 @@ impl AccountStorage {
     ) -> Result<u64> {
         let balance = self.get_account(key)?.balance;
         Ok(balance)
+    }
+
+    pub(crate) fn get_nonce(&self, key: &Account) -> Result<u64> {
+        let nonce = self.get_account(key)?.nonce;
+        Ok(nonce)
     }
 }
 

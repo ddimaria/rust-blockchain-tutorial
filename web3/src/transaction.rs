@@ -133,8 +133,9 @@ mod tests {
 
     async fn transaction() -> Transaction {
         let web3 = web3();
-        let from = web3.get_all_accounts().await.unwrap()[0];
-        let to = web3.get_all_accounts().await.unwrap()[1];
+        let accounts = web3.get_all_accounts().await.unwrap();
+        let from = accounts[0];
+        let to = accounts[1];
 
         Transaction::new(from, to, U256::zero(), U256::zero(), None).unwrap()
     }
@@ -146,8 +147,6 @@ mod tests {
 
     #[tokio::test]
     async fn it_sends_a_transaction() {
-        let response = send_transaction().await;
-        assert!(response.is_ok());
         let response = send_transaction().await;
         assert!(response.is_ok());
     }

@@ -16,11 +16,7 @@ use crate::{
     blockchain::BlockChain,
     error::{ChainError, Result},
     logger::Logger,
-    method::{
-        eth_accounts, eth_block_number, eth_get_balance, eth_get_balance_by_block,
-        eth_get_block_by_number, eth_get_code, eth_get_transaction_receipt,
-        eth_send_raw_transaction, eth_send_transaction,
-    },
+    method::*,
 };
 
 pub(crate) type Context = Arc<Mutex<BlockChain>>;
@@ -50,6 +46,7 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
     eth_send_transaction(&mut module)?;
     eth_send_raw_transaction(&mut module)?;
     eth_get_transaction_receipt(&mut module)?;
+    eth_get_transaction_count(&mut module)?;
     eth_get_code(&mut module)?;
 
     let server_handle = server.start(module)?;

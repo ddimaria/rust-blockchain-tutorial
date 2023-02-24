@@ -90,6 +90,25 @@ impl Web3 {
         })?;
         Ok(signed_transaction)
     }
+
+    /// Retrieve the eth balance for an accout at a given block.
+    ///
+    /// See https://eth.wiki/json-rpc/API#eth_getBalance
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let account = web3.get_all_accounts().await.unwrap()[0];
+    /// let nonce = web3.get_transaction_count(account).await;
+    /// assert!(nonce.is_ok());
+    /// ```
+    pub async fn get_transaction_count(&self, address: Account) -> Result<U256> {
+        let params = rpc_params![to_hex(address)];
+        let response = self.send_rpc("eth_getTransactionCount", params).await?;
+        let balance: U256 = serde_json::from_value(response)?;
+
+        Ok(balance)
+    }
 }
 
 #[cfg(test)]
@@ -121,6 +140,13 @@ mod tests {
         let response = web3()
             .get_balance_by_block(account, Some(BlockNumber(0.into())))
             .await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn it_gets_a_transaction_count() {
+        let account = get_first_user().await;
+        let response = web3().get_transaction_count(account).await;
         assert!(response.is_ok());
     }
 }

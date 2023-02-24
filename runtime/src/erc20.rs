@@ -6,7 +6,7 @@ use wasmtime::{
 };
 use wit_component::ComponentEncoder;
 
-wasmtime::component::bindgen!({ path: "../contracts-wasm/erc20/erc20.wit", world: "erc20" });
+wasmtime::component::bindgen!({ path: "../contracts/erc20/erc20.wit", world: "erc20" });
 
 fn deploy<'a>(bytes: &[u8], name: &str, symbol: &str) -> Result<()> {
     // let (mut store, contract) = load_contract(bytes)?;

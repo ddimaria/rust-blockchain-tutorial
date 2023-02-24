@@ -14,7 +14,7 @@ use types::helpers::to_hex;
 use types::transaction::{SignedTransaction, Transaction};
 use utils::crypto::SecretKey;
 
-use crate::error::Result;
+use crate::error::{Result, Web3Error};
 use crate::Web3;
 
 impl Web3 {
@@ -85,7 +85,9 @@ impl Web3 {
         transaction: Transaction,
         key: SecretKey,
     ) -> Result<SignedTransaction> {
-        let signed_transaction = transaction.sign(key).unwrap();
+        let signed_transaction = transaction.sign(key).map_err(|e| {
+            Web3Error::TransactionSigningError(format!("{:?} {}", transaction.hash, e.to_string()))
+        })?;
         Ok(signed_transaction)
     }
 }

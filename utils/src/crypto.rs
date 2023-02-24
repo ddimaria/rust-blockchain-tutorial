@@ -8,6 +8,7 @@ pub use secp256k1::{
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
 
+// reuse context throughout
 lazy_static! {
     pub(crate) static ref CONTEXT: Secp256k1<All> = Secp256k1::new();
 }
@@ -30,16 +31,32 @@ impl From<RecoverableSignature> for Signature {
     }
 }
 
-impl Into<RecoverableSignature> for Signature {
-    fn into(self) -> RecoverableSignature {
+impl TryInto<RecoverableSignature> for Signature {
+    type Error = UtilsError;
+
+    fn try_into(self) -> Result<RecoverableSignature> {
         let mut signature = [0u8; 64];
         signature[..32].copy_from_slice(self.r.as_bytes());
         signature[32..].copy_from_slice(self.s.as_bytes());
 
-        let recovery_id: RecoveryId =
-            RecoveryId::from_i32(i32::try_from(self.v).unwrap().into()).unwrap();
+        let recovery_id_32 = i32::try_from(self.v).map_err(|e| {
+            UtilsError::ConversionError(format!("could not convert u64 to i32 {}", e.to_string()))
+        })?;
+        let recovery_id: RecoveryId = RecoveryId::from_i32(recovery_id_32.into()).map_err(|e| {
+            UtilsError::ConversionError(format!(
+                "could not convert i32 to RecoveryId {}",
+                e.to_string()
+            ))
+        })?;
+        let recoverable_signature = RecoverableSignature::from_compact(&signature, recovery_id)
+            .map_err(|e| {
+                UtilsError::ConversionError(format!(
+                    "could not convert a signature to a RecoverableSignature {}",
+                    e.to_string()
+                ))
+            })?;
 
-        RecoverableSignature::from_compact(&signature, recovery_id).unwrap()
+        Ok(recoverable_signature)
     }
 }
 
@@ -125,9 +142,9 @@ pub fn hash(bytes: &[u8]) -> [u8; 32] {
 /// let message = b"The message";
 /// let signature = sign(message, &private_key);
 /// ```
-pub fn sign(message: &[u8], key: &SecretKey) -> EcdsaSignature {
-    let message = hash_message(message);
-    CONTEXT.sign_ecdsa(&message, key)
+pub fn sign(message: &[u8], key: &SecretKey) -> Result<EcdsaSignature> {
+    let message = hash_message(message)?;
+    Ok(CONTEXT.sign_ecdsa(&message, key))
 }
 
 /// Sign a recoverable message with a private key
@@ -139,9 +156,9 @@ pub fn sign(message: &[u8], key: &SecretKey) -> EcdsaSignature {
 /// let message = b"The message";
 /// let signature = sign_recovery(message, &private_key);
 /// ```
-pub fn sign_recovery(message: &[u8], key: &SecretKey) -> RecoverableSignature {
-    let message = hash_message(message);
-    CONTEXT.sign_ecdsa_recoverable(&message, key)
+pub fn sign_recovery(message: &[u8], key: &SecretKey) -> Result<RecoverableSignature> {
+    let message = hash_message(message)?;
+    Ok(CONTEXT.sign_ecdsa_recoverable(&message, key))
 }
 
 /// Verify that a message was signed using a public key
@@ -152,18 +169,18 @@ pub fn sign_recovery(message: &[u8], key: &SecretKey) -> RecoverableSignature {
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
 ///
-/// let signature = sign(message, &private_key);
+/// let signature = sign(message, &private_key).unwrap();
 /// let serialized_signature = signature.serialize_compact();
 /// let verified = verify(message, &serialized_signature, &public_key).unwrap();
 /// assert!(verified);
 ///
-/// let signature = sign_recovery(message, &private_key);
+/// let signature = sign_recovery(message, &private_key).unwrap();
 /// let (_, serialized_signature) = signature.serialize_compact();
 /// let verified = verify(message, &serialized_signature, &public_key).unwrap();
 /// assert!(verified);
 /// ```
 pub fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> Result<bool> {
-    let message = hash_message(message);
+    let message = hash_message(message)?;
     let signature = EcdsaSignature::from_compact(signature)
         .map_err(|e| UtilsError::VerifyError(e.to_string()))?;
 
@@ -177,13 +194,13 @@ pub fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> Result<bool>
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
-/// let signature = sign_recovery(message, &private_key);
+/// let signature = sign_recovery(message, &private_key).unwrap();
 /// let (recovery_id, serialized_signature) = signature.serialize_compact();
 /// let recovered_public_key = recover_public_key(message, &serialized_signature, recovery_id.to_i32()).unwrap();
 /// assert_eq!(recovered_public_key, public_key);
 /// ```
 pub fn recover_public_key(message: &[u8], signature: &[u8], recovery_id: i32) -> Result<PublicKey> {
-    let message = hash_message(message);
+    let message = hash_message(message)?;
     let recovery_id = RecoveryId::from_i32(recovery_id)
         .map_err(|e| UtilsError::ConversionError(e.to_string()))?;
     let signature = RecoverableSignature::from_compact(signature, recovery_id)
@@ -201,7 +218,7 @@ pub fn recover_public_key(message: &[u8], signature: &[u8], recovery_id: i32) ->
 ///
 /// let (private_key, public_key) = keypair();
 /// let message = b"The message";
-/// let signature = sign_recovery(message, &private_key);
+/// let signature = sign_recovery(message, &private_key).unwrap();
 /// let (recovery_id, serialized_signature) = signature.serialize_compact();
 /// let recover_address = recover_address(message, &serialized_signature, recovery_id.to_i32()).unwrap();
 /// assert_eq!(recover_address, public_key_address(&public_key));
@@ -212,9 +229,9 @@ pub fn recover_address(message: &[u8], signature: &[u8], recovery_id: i32) -> Re
 }
 
 // Helper function to hash bytes and convert to a Message
-pub fn hash_message(message: &[u8]) -> Message {
+pub fn hash_message(message: &[u8]) -> Result<Message> {
     let hashed = hash(message);
-    Message::from_slice(&hashed).unwrap()
+    Message::from_slice(&hashed).map_err(|e| UtilsError::CreateMessage(e.to_string()))
 }
 
 /// Encode items in a RlpStream
@@ -273,7 +290,7 @@ mod tests {
     fn it_recovers() {
         let (secret_key, public_key) = keypair();
         let message = b"The message";
-        let signature = sign_recovery(message, &secret_key);
+        let signature = sign_recovery(message, &secret_key).unwrap();
         let (recovery_id, serialized_signature) = signature.serialize_compact();
         let recovered_public_key =
             recover_public_key(message, &serialized_signature, recovery_id.to_i32()).unwrap();
@@ -290,12 +307,12 @@ mod tests {
         let (secret_key, public_key) = keypair();
         let message = b"The message";
 
-        let signature = sign(message, &secret_key);
+        let signature = sign(message, &secret_key).unwrap();
         let serialized_signature = signature.serialize_compact();
         let verified = verify(message, &serialized_signature, &public_key).unwrap();
         assert!(verified);
 
-        let signature = sign_recovery(message, &secret_key);
+        let signature = sign_recovery(message, &secret_key).unwrap();
         let (_, serialized_signature) = signature.serialize_compact();
         let verified = verify(message, &serialized_signature, &public_key).unwrap();
         assert!(verified);

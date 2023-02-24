@@ -164,7 +164,7 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
         // TODO(ddimaria): lookup code by block number
         // let _block = seq.next::<BlockNumber>()?;
         let block = seq.next::<String>()?.clone();
-        let _block_number = blockchain
+        let block_number = blockchain
             .lock()
             .await
             .parse_block_number(&block)
@@ -177,7 +177,9 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
             .get_account(&address)
             .map_err(|e| Error::Custom(e.to_string()))?
             .code_hash
-            .unwrap();
+            .ok_or_else(|| {
+                JsonRpseeError::Custom(format!("missing code hash for block {:?}", block_number))
+            })?;
 
         Ok(code_hash.0)
     })?;

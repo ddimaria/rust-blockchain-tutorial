@@ -43,7 +43,6 @@ impl Transaction {
         nonce: U256,
         data: Option<Bytes>,
     ) -> Result<Self> {
-        println!("{:?}", &data);
         let mut transaction = Self {
             from,
             to,
@@ -64,7 +63,7 @@ impl Transaction {
 
     pub fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
         let encoded = bincode::serialize(&self).unwrap();
-        let recoverable_signature = sign_recovery(&encoded, &key);
+        let recoverable_signature = sign_recovery(&encoded, &key)?;
         let (_, signature_bytes) = recoverable_signature.serialize_compact();
         let Signature { v, r, s } = recoverable_signature.into();
         let transaction_hash = hash(&signature_bytes).into();
@@ -109,7 +108,7 @@ impl Transaction {
     ) -> Result<(Vec<u8>, RecoveryId, [u8; 64])> {
         let message = signed_transaction.raw_transaction.0.to_owned();
         let signature: Signature = signed_transaction.into();
-        let recoverable_signature: RecoverableSignature = signature.into();
+        let recoverable_signature: RecoverableSignature = signature.try_into()?;
         let (recovery_id, signature_bytes) = recoverable_signature.serialize_compact();
 
         Ok((message, recovery_id, signature_bytes))

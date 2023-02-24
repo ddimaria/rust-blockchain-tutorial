@@ -14,7 +14,7 @@ use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
 
 use crate::{
     blockchain::BlockChain,
-    error::Result,
+    error::{ChainError, Result},
     logger::Logger,
     method::{
         eth_accounts, eth_block_number, eth_get_balance, eth_get_balance_by_block,
@@ -63,15 +63,20 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
         loop {
             interval.tick().await;
 
-            blockchain_for_transaction_processor
+            if let Err(error) = blockchain_for_transaction_processor
                 .lock()
                 .await
                 .process_transactions()
-                .await;
+                .await
+            {
+                tracing::error!("Error processing transactions {}", error.to_string());
+            }
         }
     });
 
-    transaction_processor.await.unwrap();
+    transaction_processor
+        .await
+        .map_err(|e| ChainError::InteralError(e.to_string()))?;
 
     Ok(server_handle)
 }

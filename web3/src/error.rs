@@ -21,6 +21,9 @@ pub enum Web3Error {
 
     #[error("Error receiving a HTTP JSON-RPC response: {0}")]
     RpcResponseError(String),
+
+    #[error("Error signing transaction: {0}")]
+    TransactionSigningError(String),
 }
 
 /// Utility result type to be used throughout

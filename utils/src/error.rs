@@ -13,6 +13,9 @@ pub enum UtilsError {
     #[error("Conversion error: {0}")]
     ConversionError(String),
 
+    #[error("Could not create message: {0}")]
+    CreateMessage(String),
+
     #[error("Error recovering key: {0}")]
     RecoverError(String),
 

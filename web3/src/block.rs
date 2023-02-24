@@ -59,7 +59,7 @@ impl Web3 {
         let block_number = to_hex(block_number);
         let params = rpc_params![block_number];
         let response = self.send_rpc("eth_getBlockByNumber", params).await?;
-        let block: Block = serde_json::from_value(response).unwrap();
+        let block: Block = serde_json::from_value(response)?;
 
         Ok(block)
     }

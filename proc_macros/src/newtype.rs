@@ -39,7 +39,7 @@ pub fn append(input: TokenStream2) -> TokenStream2 {
         }
     };
 
-    output.into()
+    output
 }
 
 #[cfg(test)]
@@ -63,9 +63,9 @@ mod tests {
                 fn deref_mut(&mut self) -> &mut SimpleBlock {
                     &mut self.0
                 }
+                impl Into<SimpleBlock> for Block {
             }
 
-            impl Into<SimpleBlock> for Block {
                 fn into(self) -> SimpleBlock {
                     self.0
                 }

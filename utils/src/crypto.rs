@@ -7,7 +7,6 @@ pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
-use serde::Serialize;
 
 // reuse context throughout
 lazy_static! {
@@ -41,19 +40,16 @@ impl TryInto<RecoverableSignature> for Signature {
         signature[32..].copy_from_slice(self.s.as_bytes());
 
         let recovery_id_32 = i32::try_from(self.v).map_err(|e| {
-            UtilsError::ConversionError(format!("could not convert u64 to i32 {}", e.to_string()))
+            UtilsError::ConversionError(format!("could not convert u64 to i32 {}", e))
         })?;
-        let recovery_id: RecoveryId = RecoveryId::from_i32(recovery_id_32.into()).map_err(|e| {
-            UtilsError::ConversionError(format!(
-                "could not convert i32 to RecoveryId {}",
-                e.to_string()
-            ))
+        let recovery_id: RecoveryId = RecoveryId::from_i32(recovery_id_32).map_err(|e| {
+            UtilsError::ConversionError(format!("could not convert i32 to RecoveryId {}", e))
         })?;
         let recoverable_signature = RecoverableSignature::from_compact(&signature, recovery_id)
             .map_err(|e| {
                 UtilsError::ConversionError(format!(
                     "could not convert a signature to a RecoverableSignature {}",
-                    e.to_string()
+                    e
                 ))
             })?;
 
@@ -217,9 +213,9 @@ pub fn recover_public_key(message: &[u8], signature: &[u8], recovery_id: i32) ->
     let signature = RecoverableSignature::from_compact(signature, recovery_id)
         .map_err(|e| UtilsError::VerifyError(e.to_string()))?;
 
-    Ok(CONTEXT
+    CONTEXT
         .recover_ecdsa(&message, &signature)
-        .map_err(|e| UtilsError::RecoverError(e.to_string()))?)
+        .map_err(|e| UtilsError::RecoverError(e.to_string()))
 }
 
 /// Recover the address of the public key using a recoverable signature and signed message

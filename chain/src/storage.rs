@@ -17,7 +17,7 @@ pub(crate) struct Storage {
 
 impl Storage {
     pub(crate) fn new(database_name: Option<&str>) -> Result<Self> {
-        let database_name = database_name.unwrap_or_else(|| DATABASE_NAME);
+        let database_name = database_name.unwrap_or(DATABASE_NAME);
         let db = DB::open_default(Storage::path(database_name))
             .map_err(|e| ChainError::StorageCannotOpenDb(e.to_string()))?;
 
@@ -26,7 +26,7 @@ impl Storage {
 
     pub(crate) fn insert<K: AsRef<[u8]>, V: Serialize>(&self, key: K, value: &V) -> Result<()> {
         self.db
-            .put(&key, &serialize(&value)?)
+            .put(&key, serialize(&value)?)
             .map_err(|_| ChainError::StoragePutError(Storage::key_string(&key)))?;
         Ok(())
     }
@@ -62,7 +62,7 @@ impl Storage {
     }
 
     pub(crate) fn key_string<K: AsRef<[u8]>>(key: K) -> String {
-        String::from_utf8(key.as_ref().to_vec()).unwrap_or("UNKNOWN".into())
+        String::from_utf8(key.as_ref().to_vec()).unwrap_or_else(|_| "UNKNOWN".into())
     }
 
     fn path(database_name: &str) -> PathBuf {

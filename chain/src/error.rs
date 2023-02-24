@@ -109,9 +109,9 @@ impl From<JsonRpseeError> for ChainError {
     }
 }
 
-impl Into<JsonRpseeError> for ChainError {
-    fn into(self) -> JsonRpseeError {
-        JsonRpseeError::Custom("Internal error".into())
+impl From<ChainError> for JsonRpseeError {
+    fn from(error: ChainError) -> Self {
+        JsonRpseeError::Custom(error.to_string())
     }
 }
 

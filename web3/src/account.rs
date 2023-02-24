@@ -86,7 +86,7 @@ impl Web3 {
         key: SecretKey,
     ) -> Result<SignedTransaction> {
         let signed_transaction = transaction.sign(key).map_err(|e| {
-            Web3Error::TransactionSigningError(format!("{:?} {}", transaction.hash, e.to_string()))
+            Web3Error::TransactionSigningError(format!("{:?} {}", transaction.hash, e))
         })?;
         Ok(signed_transaction)
     }

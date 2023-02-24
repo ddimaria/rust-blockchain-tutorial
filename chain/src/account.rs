@@ -26,7 +26,7 @@ impl AccountData {
         }
     }
 
-    pub(crate) fn is_contract(&self) -> bool {
+    pub(crate) fn _is_contract(&self) -> bool {
         self.code_hash.is_some()
     }
 }
@@ -42,9 +42,9 @@ impl AccountStorage {
     }
 
     pub(crate) fn add_account(&self, key: Option<Account>, data: &AccountData) -> Result<Account> {
-        let key = key.unwrap_or_else(|| Account::random());
+        let key = key.unwrap_or_else(Account::random);
 
-        if !self.accounts.contains_key(&key) {
+        if !self.accounts.contains_key(key) {
             self.accounts.insert(key, &data)?;
         } else {
             tracing::info!("Did not create account {} as it already exists", &key);
@@ -54,7 +54,7 @@ impl AccountStorage {
     }
 
     pub(crate) fn add_account_balance(&self, key: &Account, amount: u64) -> Result<()> {
-        self.get_account(&key)?.balance += amount;
+        self.get_account(key)?.balance += amount;
         Ok(())
     }
 
@@ -74,7 +74,7 @@ impl AccountStorage {
     }
 
     pub(crate) fn increment_nonce(&mut self, key: &Account) -> Result<u64> {
-        let mut account_data = self.get_account(&key)?;
+        let mut account_data = self.get_account(key)?;
         account_data.nonce += 1;
         self.accounts.update(key, &account_data)?;
 

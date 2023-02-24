@@ -77,11 +77,6 @@ impl AccountStorage {
         Ok(account_data.nonce)
     }
 
-    pub(crate) fn get_account_balance(&self, key: &Account) -> Result<u64> {
-        let balance = self.get_account(key)?.balance;
-        Ok(balance)
-    }
-
     pub(crate) fn get_account_balance_by_block(
         &self,
         key: &Account,

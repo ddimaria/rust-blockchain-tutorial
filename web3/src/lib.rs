@@ -62,10 +62,5 @@ impl Web3 {
         trace!("RPC Response {:?}", response);
 
         response
-
-        // match response {
-        //     Output::Success(s) => Ok(s.result),
-        //     Output::Failure(f) => Err(Web3Error::RpcResponseError(f.error.to_string())),
-        // }
     }
 }

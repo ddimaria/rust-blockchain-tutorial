@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////v
 
 use thiserror::Error;
+use utils::error::UtilsError;
 
 #[derive(Error, Debug)]
 pub enum TypeError {
@@ -15,6 +16,9 @@ pub enum TypeError {
 
     #[error("Error converting a hex to U64: {0}")]
     HexToU64Error(String),
+
+    #[error("Error converting a hex to U64: {0}")]
+    UtilError(String),
 }
 
 pub type Result<T> = std::result::Result<T, TypeError>;
@@ -22,5 +26,13 @@ pub type Result<T> = std::result::Result<T, TypeError>;
 impl From<Box<bincode::ErrorKind>> for TypeError {
     fn from(error: Box<bincode::ErrorKind>) -> Self {
         TypeError::EncodingDecodingError(error.to_string())
+    }
+}
+
+impl From<UtilsError> for TypeError {
+    fn from(error: UtilsError) -> Self {
+        match error {
+            _ => TypeError::UtilError(error.to_string()),
+        }
     }
 }

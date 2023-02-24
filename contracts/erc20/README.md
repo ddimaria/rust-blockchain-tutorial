@@ -1,6 +1,6 @@
 # ERC20 WASM Contract
 
-The [contracts-wasm](contracts-wasm) directory holds the WASM source code.
+The [contracts](contracts) directory holds the WASM source code.
 Using [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen), we can greatly simplify dealing with complex types.
 The [WIT format](https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md) specifies a language for generating WASM code. 
 ## Contracts

@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-pub mod tests {
+pub(crate) mod tests {
     use crate::Web3;
 
     pub fn web3() -> Web3 {

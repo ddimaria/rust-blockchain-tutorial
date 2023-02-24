@@ -27,8 +27,14 @@ pub enum ChainError {
     #[error("Block {0} not found")]
     BlockNotFound(String),
 
+    #[error("Error encoding/decoding: {0}")]
+    EncodingDecodingError(String),
+
     #[error("Could not deserialize: {0}")]
     DeserializeError(String),
+
+    #[error("Interal Error: {0}")]
+    InteralError(String),
 
     #[error("Invalid block number {0}")]
     InvalidBlockNumber(String),
@@ -36,7 +42,10 @@ pub enum ChainError {
     #[error("JsonRpsee Error: {0}")]
     JsonRpseeError(String),
 
-    #[error("Could not serialize for storage: {0}")]
+    #[error("Parent hash is missing: {0}")]
+    MissingHash(String),
+
+    #[error("Could not serialize: {0}")]
     SerializeError(String),
 
     #[error("Could not open the database: {0}")]
@@ -62,6 +71,9 @@ pub enum ChainError {
 
     #[error("Transaction {0} cannot be verified")]
     TransactionNotVerified(String),
+
+    #[error("Type Error {0}")]
+    TypeError(String),
 }
 
 /// Utility result type to be used throughout
@@ -111,6 +123,11 @@ impl<T> From<PoisonError<T>> for ChainError {
 
 impl From<TypeError> for ChainError {
     fn from(error: TypeError) -> Self {
-        ChainError::JsonRpseeError(error.to_string())
+        ChainError::TypeError(error.to_string())
+    }
+}
+impl From<Box<bincode::ErrorKind>> for ChainError {
+    fn from(error: Box<bincode::ErrorKind>) -> Self {
+        ChainError::EncodingDecodingError(error.to_string())
     }
 }

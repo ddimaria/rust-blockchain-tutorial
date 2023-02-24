@@ -119,7 +119,7 @@ It leverages the [component model](https://github.com/WebAssembly/component-mode
 
 ### Contracts
 
-The [contracts-wasm](contracts-wasm) directory holds the WASM source code.
+The [contracts](contracts) directory holds the WASM source code.
 Using [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen), we can greatly simplify dealing with complex types.
 
 #### WIT

@@ -80,7 +80,6 @@ impl Web3 {
         let transaction_request = to_value(&transaction_request)?;
         let params = rpc_params![transaction_request];
         let response = self.send_rpc("eth_sendRawTransaction", params).await?;
-        println!("{:?}", response);
         let tx_hash: H256 = serde_json::from_value(response)?;
 
         Ok(tx_hash)

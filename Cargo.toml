@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "chain",
-    "contracts-wasm/erc20",
+    "contracts/erc20",
     "proc_macros",
     "runtime",
     "types",

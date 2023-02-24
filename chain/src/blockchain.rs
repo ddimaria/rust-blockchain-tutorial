@@ -30,7 +30,7 @@ impl BlockChain {
     pub(crate) fn new(storage: Arc<Storage>) -> Result<Self> {
         Ok(Self {
             accounts: AccountStorage::new(storage),
-            blocks: vec![Block::genesis().unwrap()],
+            blocks: vec![Block::genesis()?],
             transactions: Arc::new(Mutex::new(TransactionStorage::new())),
         })
     }
@@ -56,10 +56,11 @@ impl BlockChain {
 
     pub(crate) fn new_block(&mut self, transactions: Vec<Transaction>) -> Result<BlockNumber> {
         // TODO(ddimaria): make this an atomic operation
-        // TODO(ddimaria): handle unwraps
         let current_block = self.get_current_block()?;
         let number = current_block.number + 1_u64;
-        let parent_hash = current_block.hash.unwrap();
+        let parent_hash = current_block
+            .hash
+            .ok_or_else(|| ChainError::MissingHash(current_block.number.to_string()))?;
         let nonce_serialized = format!("{:?}", (number, parent_hash, &transactions));
         let nonce = Blake2s256::digest(&nonce_serialized);
 
@@ -68,8 +69,7 @@ impl BlockChain {
             H256::from(nonce.as_ref()),
             parent_hash,
             transactions,
-        )
-        .unwrap();
+        )?;
 
         self.blocks.push(block);
 
@@ -80,9 +80,9 @@ impl BlockChain {
     pub(crate) async fn send_transaction(
         &mut self,
         transaction_request: TransactionRequest,
-    ) -> H256 {
+    ) -> Result<H256> {
         let from = transaction_request.from.unwrap_or(H160::zero());
-        let nonce = self.accounts.increment_nonce(&from).unwrap().into();
+        let nonce = self.accounts.increment_nonce(&from)?.into();
 
         let transaction: Transaction = Transaction::new(
             from,
@@ -90,20 +90,20 @@ impl BlockChain {
             transaction_request.value.unwrap_or(U256::zero()),
             nonce,
             transaction_request.data,
-        )
-        .unwrap();
+        )?;
 
-        // TODO(ddimaria): handle unwraps
-        let hash = transaction.hash.unwrap();
+        let hash = transaction
+            .hash
+            .ok_or_else(|| ChainError::MissingHash("transaction hash".into()))?;
 
         // add to the transaction mempool
         self.transactions.lock().await.send_transaction(transaction);
 
-        hash
+        Ok(hash)
     }
 
     pub(crate) async fn send_raw_transaction(&mut self, transaction: Bytes) -> Result<H256> {
-        let signed_transaction: SignedTransaction = bincode::deserialize(&transaction.0).unwrap();
+        let signed_transaction: SignedTransaction = bincode::deserialize(&transaction.0)?;
 
         let verified = Transaction::verify(signed_transaction.clone())
             .map_err(|e| ChainError::TransactionNotVerified(e.to_string()))?;
@@ -114,13 +114,13 @@ impl BlockChain {
             ));
         }
 
-        let transaction: Transaction = signed_transaction.try_into().unwrap();
+        let transaction: Transaction = signed_transaction.try_into()?;
 
-        Ok(self.send_transaction(transaction.into()).await)
+        self.send_transaction(transaction.into()).await
     }
 
     // TODO(ddimaria): actually process the transaction
-    pub(crate) async fn process_transactions(&mut self) {
+    pub(crate) async fn process_transactions(&mut self) -> Result<()> {
         // Bulk drain the current queue to fit into the new block
         // This is not safe as we lose transactions if a panic occurs
         // or if the program is halted
@@ -143,37 +143,39 @@ impl BlockChain {
             for transaction in transactions.iter() {
                 tracing::info!("Processing Transaction {:?}", transaction.hash);
 
-                let contract_address = transaction.data.as_ref().and_then(|_| {
-                    // TODO(ddimaria): create deterministic contract address below
-                    // let sender = self.accounts.get_account(&transaction.from).unwrap();
-                    // let contract_address = format!("{}{}", transaction.from, sender.nonce);
-                    // let contract_hash = hash(&contract_address);
+                if let Some(transaction_hash) = transaction.hash {
+                    let contract_address = transaction.data.as_ref().and_then(|_| {
+                        // TODO(ddimaria): create deterministic contract address below
+                        // let sender = self.accounts.get_account(&transaction.from).unwrap();
+                        // let contract_address = format!("{}{}", transaction.from, sender.nonce);
+                        // let contract_hash = hash(&contract_address);
 
-                    // create a contract account
-                    let account_data = AccountData::new(transaction.data.clone());
-                    if let Ok(contract_address) = self.accounts.add_account(None, &account_data) {
-                        Some(contract_address)
-                    } else {
-                        tracing::error!("Error creating a contract account {:?}", account_data);
-                        None
-                    }
-                });
+                        // create a contract account
+                        let account_data = AccountData::new(transaction.data.clone());
+                        if let Ok(contract_address) = self.accounts.add_account(None, &account_data)
+                        {
+                            Some(contract_address)
+                        } else {
+                            tracing::error!("Error creating a contract account {:?}", account_data);
+                            None
+                        }
+                    });
 
-                let transaction_hash = transaction.hash.unwrap();
-                let transaction_receipt = TransactionReceipt {
-                    block_hash: None,
-                    block_number: None,
-                    contract_address,
-                    transaction_hash,
-                };
-                receipts.push(transaction_receipt);
+                    let transaction_receipt = TransactionReceipt {
+                        block_hash: None,
+                        block_number: None,
+                        contract_address,
+                        transaction_hash,
+                    };
+                    receipts.push(transaction_receipt);
 
-                self.transactions
-                    .clone()
-                    .lock()
-                    .await
-                    .processed
-                    .insert(transaction_hash, transaction.to_owned());
+                    self.transactions
+                        .clone()
+                        .lock()
+                        .await
+                        .processed
+                        .insert(transaction_hash, transaction.to_owned());
+                }
             }
 
             // We've processed all transactions, now calculate the block hash
@@ -186,7 +188,7 @@ impl BlockChain {
                 .reduce(|cur: String, nxt: String| cur + &nxt)
                 .unwrap_or("".into());
             let block_hash = hash(&hashes.into_bytes());
-            let block_number = self.new_block(transactions.clone().into()).unwrap();
+            let block_number = self.new_block(transactions.clone().into())?;
 
             tracing::info!(
                 "Created block {} with {} transactions",
@@ -215,6 +217,8 @@ impl BlockChain {
                 storage.receipts.len()
             );
         }
+
+        Ok(())
     }
 
     pub(crate) async fn get_transaction_receipt(
@@ -245,13 +249,12 @@ pub(crate) mod tests {
     fn new_transaction(blockchain: &BlockChain) -> Transaction {
         let from = blockchain.accounts.get_all_accounts()[0];
         let to = blockchain.accounts.get_all_accounts()[1];
-        let data = vec![0, 1];
 
-        Transaction::new(from, to, U256::zero(), U256::zero(), Some(data.into())).unwrap()
+        Transaction::new(from, to, U256::zero(), U256::zero(), None).unwrap()
     }
 
     pub(crate) async fn assert_receipt(blockchain: &mut BlockChain, transaction_hash: H256) {
-        blockchain.process_transactions().await;
+        blockchain.process_transactions().await.unwrap();
 
         let receipt = blockchain
             .transactions
@@ -282,7 +285,10 @@ pub(crate) mod tests {
     async fn sends_a_transaction() {
         let mut blockchain = new_blockchain();
         let transaction = new_transaction(&blockchain);
-        let transaction_hash = blockchain.send_transaction(transaction.into()).await;
+        let transaction_hash = blockchain
+            .send_transaction(transaction.into())
+            .await
+            .unwrap();
 
         assert_receipt(&mut blockchain, transaction_hash).await;
     }

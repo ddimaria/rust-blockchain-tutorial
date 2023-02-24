@@ -3,9 +3,7 @@ use wit_bindgen_guest_rust::*;
 
 wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
 
-struct Erc20 {
-    name: String,
-}
+struct Erc20 {}
 
 export_contract!(Erc20);
 

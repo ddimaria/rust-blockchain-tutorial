@@ -10,7 +10,9 @@ The [WIT format](https://github.com/WebAssembly/component-model/blob/main/design
 ```wit
 default world contract {
   export erc20: interface {
-    mint: func(address: string, amount: u64)
+    construct: func(name: string, symbol: string)
+    mint: func(account: string, amount: u64)
+    transfer: func(to: string, amount: u64)
   }
 }
 ```
@@ -29,8 +31,16 @@ struct Erc20 {}
 export_contract!(Erc20);
 
 impl erc20::Erc20 for Erc20 {
-    fn mint(address: String, amount: u64) {
-        // mint some coin
+    fn construct(name: String, symbol: String) {
+        println!("name {}, symbol", symbol);
+    }
+
+    fn mint(account: String, amount: u64) {
+        println!("account {}, amount", amount);
+    }
+
+    fn transfer(to: String, amount: u64) {
+        println!("to {}, amount", amount);
     }
 }
 ```

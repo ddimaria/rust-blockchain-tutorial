@@ -8,6 +8,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+use std::sync::Arc;
+
+use eth_trie::{EthTrie, MemoryDB, Trie};
 use ethereum_types::{Address, H160, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -61,8 +64,12 @@ impl Transaction {
         Ok(transaction)
     }
 
+    pub fn transaction_hash(&self) -> Result<H256> {
+        self.hash.ok_or(TypeError::MissingTransactionHash)
+    }
+
     pub fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
-        let encoded = bincode::serialize(&self).unwrap();
+        let encoded = bincode::serialize(&self)?;
         let recoverable_signature = sign_recovery(&encoded, &key)?;
         let (_, signature_bytes) = recoverable_signature.serialize_compact();
         let Signature { v, r, s } = recoverable_signature.into();
@@ -80,25 +87,23 @@ impl Transaction {
     }
 
     pub fn verify(signed_transaction: SignedTransaction) -> Result<bool> {
-        let (message, recovery_id, signature_bytes) =
-            Self::recover_pieces(signed_transaction).unwrap();
-        let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32()).unwrap();
-        let verified = verify(&message, &signature_bytes, &key).unwrap();
+        let (message, recovery_id, signature_bytes) = Self::recover_pieces(signed_transaction)?;
+        let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32())?;
+        let verified = verify(&message, &signature_bytes, &key)?;
 
         Ok(verified)
     }
 
     pub fn recover_address(signed_transaction: SignedTransaction) -> Result<H160> {
-        let key = Self::recover_public_key(signed_transaction).unwrap();
+        let key = Self::recover_public_key(signed_transaction)?;
         let address = public_key_address(&key);
 
         Ok(address)
     }
 
     pub fn recover_public_key(signed_transaction: SignedTransaction) -> Result<PublicKey> {
-        let (message, recovery_id, signature_bytes) =
-            Self::recover_pieces(signed_transaction).unwrap();
-        let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32()).unwrap();
+        let (message, recovery_id, signature_bytes) = Self::recover_pieces(signed_transaction)?;
+        let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32())?;
 
         Ok(key)
     }
@@ -112,6 +117,32 @@ impl Transaction {
         let (recovery_id, signature_bytes) = recoverable_signature.serialize_compact();
 
         Ok((message, recovery_id, signature_bytes))
+    }
+
+    fn to_trie(transactions: &[Transaction]) -> Result<EthTrie<MemoryDB>> {
+        let memdb = Arc::new(MemoryDB::new(true));
+        let mut trie = EthTrie::new(memdb);
+
+        transactions.iter().try_for_each(|transaction| {
+            trie.insert(
+                transaction.transaction_hash()?.as_bytes(),
+                bincode::serialize(&transaction)
+                    .map_err(|e| TypeError::EncodingDecodingError(e.to_string()))?
+                    .as_slice(),
+            )
+            .map_err(|e| TypeError::EncodingDecodingError(e.to_string()))
+        })?;
+
+        Ok(trie)
+    }
+
+    pub fn hash_root(transactions: &[Transaction]) -> Result<H256> {
+        let mut trie = Self::to_trie(transactions)?;
+        let root_hash = trie
+            .root_hash()
+            .map_err(|e| TypeError::UtilError(e.to_string()))?;
+
+        Ok(H256::from_slice(root_hash.as_bytes()))
     }
 }
 
@@ -202,14 +233,13 @@ pub struct Log {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::account::Account;
     use ethereum_types::U256;
-    use std::convert::From;
+    use std::{convert::From, str::FromStr};
     use utils::crypto::{keypair, public_key_address};
 
     pub(crate) fn new_transaction() -> Transaction {
-        let from = Account::random();
-        let to = Account::random();
+        let from = H160::from_str("0x4a0d457e884ebd9b9773d172ed687417caac4f14").unwrap();
+        let to = H160::from_str("0x6b78fa07883d5c5b527da9828ac77f5aa5a61d3b").unwrap();
         let value = U256::from(1u64);
 
         Transaction::new(from, to, value, U256::zero(), None).unwrap()
@@ -226,12 +256,13 @@ mod tests {
     }
 
     #[test]
-    fn it_verifies_a_signed_transaction() {
-        let (secret_key, _) = keypair();
-        let transaction = new_transaction();
-        let signed = transaction.sign(secret_key).unwrap();
-        let verified = Transaction::verify(signed).unwrap();
-
-        assert!(verified);
+    fn hash_root() {
+        let transaction_1 = new_transaction();
+        let transaction_2 = new_transaction();
+        let root = Transaction::hash_root(&vec![transaction_1, transaction_2]).unwrap();
+        let expected =
+            H256::from_str("0xafd5ef3462d2e65dd202fe57a5f44f81976d3affaa9dab26e63bda1df0cf0fae")
+                .unwrap();
+        assert_eq!(root, expected);
     }
 }

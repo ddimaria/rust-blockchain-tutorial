@@ -111,6 +111,7 @@ pub struct Block {
     pub hash: Option<H256>,
     pub parent_hash: H256,
     pub transactions: Vec<Transaction>,
+    pub transactions_root: H256,
 }
 
 impl Block {
@@ -120,12 +121,14 @@ impl Block {
         parent_hash: H256,
         transactions: Vec<Transaction>,
     ) -> Result<Block> {
+        let transactions_root = Transaction::hash_root(&transactions)?;
         let mut block = Block {
             number,
             hash: None,
             nonce,
             parent_hash,
             transactions,
+            transactions_root,
         };
 
         let serialized = bincode::serialize(&block)?;

@@ -92,9 +92,7 @@ impl BlockChain {
             transaction_request.data,
         )?;
 
-        let hash = transaction
-            .hash
-            .ok_or_else(|| ChainError::MissingHash("transaction hash".into()))?;
+        let hash = transaction.transaction_hash()?;
 
         // add to the transaction mempool
         self.transactions.lock().await.send_transaction(transaction);

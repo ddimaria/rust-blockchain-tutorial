@@ -29,19 +29,29 @@ use crate::error::{Result, TypeError};
 pub struct Transaction {
     pub data: Option<Bytes>,
     pub from: Address,
+    pub to: Option<Address>,
     pub gas: U256,
     pub gas_price: U256,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hash: Option<H256>,
     pub nonce: U256,
-    pub to: Address,
     pub value: U256,
+}
+
+/// On Ethereum there are a few different types of transactions:
+///   * Regular transactions: a transaction from one account to another.
+///   * Contract deployment transactions: a transaction without a 'to' address, where the data field is used for the contract code.
+///   * Execution of a contract: a transaction that interacts with a deployed smart contract. In this case, 'to' address is the smart contract address.
+pub enum TransactionKind {
+    Regular(Address, Address),
+    ContractDeployment(Address, Bytes),
+    ContractExecution(Address, Address, Bytes),
 }
 
 impl Transaction {
     pub fn new(
         from: Account,
-        to: Account,
+        to: Option<Account>,
         value: U256,
         nonce: U256,
         data: Option<Bytes>,
@@ -66,6 +76,15 @@ impl Transaction {
 
     pub fn transaction_hash(&self) -> Result<H256> {
         self.hash.ok_or(TypeError::MissingTransactionHash)
+    }
+
+    pub fn kind(self) -> Result<TransactionKind> {
+        match (self.from, self.to, self.data) {
+            (from, Some(to), None) => Ok(TransactionKind::Regular(from, to)),
+            (from, None, Some(data)) => Ok(TransactionKind::ContractDeployment(from, data)),
+            (from, Some(to), Some(data)) => Ok(TransactionKind::ContractExecution(from, to, data)),
+            _ => Err(TypeError::InvalidTransaction("kind".into())),
+        }
     }
 
     pub fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
@@ -111,12 +130,12 @@ impl Transaction {
     fn recover_pieces(
         signed_transaction: SignedTransaction,
     ) -> Result<(Vec<u8>, RecoveryId, [u8; 64])> {
-        let message = signed_transaction.raw_transaction.0.to_owned();
+        let message = signed_transaction.raw_transaction.to_owned();
         let signature: Signature = signed_transaction.into();
         let recoverable_signature: RecoverableSignature = signature.try_into()?;
         let (recovery_id, signature_bytes) = recoverable_signature.serialize_compact();
 
-        Ok((message, recovery_id, signature_bytes))
+        Ok((message.to_vec(), recovery_id, signature_bytes))
     }
 
     fn to_trie(transactions: &[Transaction]) -> Result<EthTrie<MemoryDB>> {
@@ -169,7 +188,7 @@ impl TryInto<Transaction> for SignedTransaction {
     type Error = TypeError;
 
     fn try_into(self) -> Result<Transaction> {
-        bincode::deserialize(&self.raw_transaction.0)
+        bincode::deserialize(&self.raw_transaction)
             .map_err(|e| TypeError::EncodingDecodingError(e.to_string()))
     }
 }
@@ -194,7 +213,7 @@ impl From<Transaction> for TransactionRequest {
     fn from(value: Transaction) -> TransactionRequest {
         TransactionRequest {
             from: Some(value.from),
-            to: Some(value.to),
+            to: value.to,
             value: Some(value.value),
             data: value.data,
             gas: value.gas,
@@ -242,7 +261,7 @@ mod tests {
         let to = H160::from_str("0x6b78fa07883d5c5b527da9828ac77f5aa5a61d3b").unwrap();
         let value = U256::from(1u64);
 
-        Transaction::new(from, to, value, U256::zero(), None).unwrap()
+        Transaction::new(from, Some(to), value, U256::zero(), None).unwrap()
     }
 
     #[test]
@@ -261,7 +280,7 @@ mod tests {
         let transaction_2 = new_transaction();
         let root = Transaction::hash_root(&vec![transaction_1, transaction_2]).unwrap();
         let expected =
-            H256::from_str("0xafd5ef3462d2e65dd202fe57a5f44f81976d3affaa9dab26e63bda1df0cf0fae")
+            H256::from_str("0x637fbee17e66aa4afb552b6a21c7695e2b5e44bf3f658b18b928170cc051bdf6")
                 .unwrap();
         assert_eq!(root, expected);
     }

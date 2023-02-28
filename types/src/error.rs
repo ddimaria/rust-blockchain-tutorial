@@ -17,6 +17,9 @@ pub enum TypeError {
     #[error("Error converting a hex to U64: {0}")]
     HexToU64Error(String),
 
+    #[error("Invalid transaction: {0}")]
+    InvalidTransaction(String),
+
     #[error("Missing transaction hash")]
     MissingTransactionHash,
 

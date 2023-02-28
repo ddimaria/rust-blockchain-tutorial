@@ -18,24 +18,6 @@ use crate::error::{Result, Web3Error};
 use crate::Web3;
 
 impl Web3 {
-    /// Retrieve all list of all addresses/accounts.
-    ///
-    /// See https://eth.wiki/json-rpc/API#eth_accounts
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let web3 = web3::Web3::new("http://127.0.0.1:8545").unwrap();
-    /// let all_accounts = web3.get_all_accounts().await;
-    /// assert!(all_accounts.is_ok());
-    /// ```
-    pub async fn get_all_accounts(&self) -> Result<Vec<Account>> {
-        let response = self.send_rpc("eth_accounts", rpc_params![]).await?;
-        let accounts: Vec<Account> = serde_json::from_value(response)?;
-
-        Ok(accounts)
-    }
-
     /// Retrieve the eth balance for an accout at the current block.
     ///
     /// See https://eth.wiki/json-rpc/API#eth_getBalance
@@ -114,29 +96,19 @@ impl Web3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::tests::web3;
-
-    pub async fn get_first_user() -> Account {
-        let accounts = web3().get_all_accounts().await.unwrap();
-        accounts[0].clone()
-    }
-
-    #[tokio::test]
-    async fn it_gets_all_accounts() {
-        let response = web3().get_all_accounts().await;
-        assert!(response.is_ok());
-    }
+    use crate::helpers::tests::{web3, ACCOUNT_1};
 
     #[tokio::test]
     async fn it_gets_a_balance() {
-        let account = get_first_user().await;
+        let account = *ACCOUNT_1;
         let response = web3().get_balance(account).await;
         assert!(response.is_ok());
     }
 
     #[tokio::test]
     async fn it_gets_a_balance_by_block() {
-        let account = get_first_user().await;
+        // crate::transaction::tests::send_transaction().await.unwrap();
+        let account = *ACCOUNT_1;
         let response = web3()
             .get_balance_by_block(account, Some(BlockNumber(0.into())))
             .await;
@@ -145,7 +117,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_gets_a_transaction_count() {
-        let account = get_first_user().await;
+        let account = *ACCOUNT_1;
         let response = web3().get_transaction_count(account).await;
         assert!(response.is_ok());
     }

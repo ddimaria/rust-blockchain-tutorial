@@ -29,10 +29,10 @@ impl Web3 {
     /// let tx_hash = web3.deploy(account, &contract).await;
     /// assert!(tx_hash.is_ok());
     /// ```
-    pub async fn deploy(&self, owner: Address, abi: &[u8]) -> Result<H256> {
+    pub async fn deploy<'a>(&self, owner: Address, abi: &'a [u8]) -> Result<H256> {
         let gas = U256::from(1_000_000);
         let gas_price = U256::from(1_000_000);
-        let data: Bytes = abi.into();
+        let data: Bytes = abi.to_vec().into();
         let transaction_request = TransactionRequest {
             from: Some(owner),
             to: None,
@@ -82,13 +82,14 @@ mod tests {
     use tokio::time::sleep;
 
     use super::*;
-    use crate::helpers::tests::{get_contract, web3};
+    use crate::helpers::tests::{get_contract, web3, ACCOUNT_1};
 
     async fn deploy_contract() -> Result<H256> {
         let web3 = web3();
-        let to = web3.get_all_accounts().await.unwrap()[1].clone();
-        let data = get_contract();
-        web3.deploy(to, &data).await
+        let from = *ACCOUNT_1;
+        // let data = get_contract();
+        let data = [0, 1];
+        web3.deploy(from, &data).await
     }
 
     #[tokio::test]
@@ -109,6 +110,6 @@ mod tests {
         let response = web3.code(receipt.contract_address.unwrap(), None).await;
 
         // ensure the code matches what was deployed
-        assert_eq!(response.unwrap(), get_contract());
+        assert_eq!(response.unwrap(), [0, 1]);
     }
 }

@@ -11,6 +11,7 @@ ethereum-types = "0.10.0"
 ethabi = "13"
 hex = "0.4"
 jsonrpsee = { version = "0.16.2", features = ["full", "client"] }
+lazy_static = "1.4.0"
 log = "0.4.0"
 serde = "1"
 serde_json = "1"

@@ -28,9 +28,9 @@ pub(crate) fn deserialize<V: DeserializeOwned>(value: &[u8]) -> Result<V> {
 #[allow(unused)]
 pub mod tests {
 
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
-    use ethereum_types::{H160, U256};
+    use ethereum_types::{H160, H256, U256};
     use jsonrpsee::{
         http_client::{HttpClient, HttpClientBuilder},
         server::ServerHandle,
@@ -38,14 +38,21 @@ pub mod tests {
     use lazy_static::lazy_static;
     use rocksdb::{DBCommon, SingleThreaded};
     use tokio::sync::Mutex;
+    use types::account::{Account, AccountData};
     use types::transaction::Transaction;
 
-    use crate::{account::AccountData, blockchain::BlockChain, server::serve, storage::Storage};
+    use crate::{blockchain::BlockChain, server::serve, storage::Storage};
 
     static ADDRESS: &str = "127.0.0.1:8545";
+    static DATABASE_NAME: Option<&str> = Some("test");
 
     lazy_static! {
-        pub(crate) static ref STORAGE: Arc<Storage> = Arc::new(Storage::new(Some("test")).unwrap());
+        pub(crate) static ref STORAGE: Arc<Storage> =
+            Arc::new(Storage::new(DATABASE_NAME).unwrap());
+        pub(crate) static ref ACCOUNT_1: Account =
+            H160::from_str("0x4a0d457e884ebd9b9773d172ed687417caac4f14").unwrap();
+        pub(crate) static ref ACCOUNT_2: Account = Account::random();
+        pub(crate) static ref ACCOUNT_3: Account = Account::random();
     }
 
     pub(crate) async fn server(blockchain: Option<Arc<Mutex<BlockChain>>>) -> ServerHandle {
@@ -60,25 +67,24 @@ pub mod tests {
     }
 
     pub(crate) async fn setup() -> (Arc<Mutex<BlockChain>>, H160, H160) {
+        // Storage::destroy(DATABASE_NAME).unwrap();
         let mut blockchain = BlockChain::new((*STORAGE).clone()).unwrap();
-        let account_data_1 = AccountData::new(None);
-        let account_data_2 = AccountData::new(None);
-        let id_1 = blockchain
+        let mut account_data_1 = AccountData::new(None);
+
+        account_data_1.balance = U256::from(100_000);
+
+        blockchain
             .accounts
-            .add_account(None, &account_data_1)
+            .add_account(&ACCOUNT_1, &account_data_1)
             .unwrap();
-        let id_2 = blockchain
-            .accounts
-            .add_account(None, &account_data_2)
-            .unwrap();
-        blockchain.accounts.add_account_balance(&id_1, 100).unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);
-        let transaction = Transaction::new(id_1, id_2, value, U256::zero(), None).unwrap();
+        let transaction =
+            Transaction::new(*ACCOUNT_1, Some(*ACCOUNT_2), value, U256::zero(), None).unwrap();
 
         blockchain.new_block(vec![transaction]);
 
-        (Arc::new(Mutex::new(blockchain)), id_1, id_2)
+        (Arc::new(Mutex::new(blockchain)), *ACCOUNT_1, *ACCOUNT_2)
     }
 
     pub(crate) fn assert_vec_contains<T: std::cmp::PartialEq>(vec_1: Vec<T>, vec_2: Vec<T>) {

@@ -15,15 +15,6 @@ use types::{
 
 use crate::{error::Result, server::Context};
 
-pub(crate) fn eth_accounts(module: &mut RpcModule<Context>) -> Result<()> {
-    module.register_async_method("eth_accounts", |_, blockchain| async move {
-        let accounts = blockchain.lock().await.accounts.get_all_accounts();
-        Ok(accounts)
-    })?;
-
-    Ok(())
-}
-
 pub(crate) fn eth_block_number(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method("eth_blockNumber", |_, blockchain| async move {
         let block_number = blockchain
@@ -41,8 +32,7 @@ pub(crate) fn eth_block_number(module: &mut RpcModule<Context>) -> Result<()> {
 pub(crate) fn eth_get_block_by_number(module: &mut RpcModule<Context>) -> Result<()> {
     module.register_async_method("eth_getBlockByNumber", |params, blockchain| async move {
         let block_number = params.one::<BlockNumber>()?;
-        let index = (*block_number).as_usize();
-        let block = blockchain.lock().await.blocks[index - 1].clone();
+        let block = blockchain.lock().await.get_block_by_number(*block_number)?;
 
         Ok(block)
     })?;
@@ -127,7 +117,7 @@ pub(crate) fn eth_send_transaction(module: &mut RpcModule<Context>) -> Result<()
                 .send_transaction(transaction_request)
                 .await;
 
-            Ok(transaction_hash)
+            Ok(transaction_hash?)
         },
     )?;
 
@@ -197,7 +187,7 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
                 JsonRpseeError::Custom(format!("missing code hash for block {:?}", block_number))
             })?;
 
-        Ok(code_hash.0)
+        Ok(code_hash)
     })?;
 
     Ok(())
@@ -205,23 +195,8 @@ pub(crate) fn eth_get_code(module: &mut RpcModule<Context>) -> Result<()> {
 
 #[cfg(test)]
 pub mod tests {
-    use jsonrpsee::rpc_params;
-    use types::account::Account;
-
     use super::*;
-    use crate::helpers::tests::{assert_vec_contains, setup};
-
-    #[tokio::test]
-    async fn gets_all_accounts() {
-        let (blockchain, id_1, id_2) = setup().await;
-        let mut module = RpcModule::new(blockchain);
-        eth_accounts(&mut module).unwrap();
-        let response: Vec<Account> = module.call("eth_accounts", rpc_params![]).await.unwrap();
-        println!("**{:?}", response);
-        println!("**{:?}", vec![id_1, id_2]);
-
-        assert_vec_contains(response, vec![id_1, id_2]);
-    }
+    use crate::helpers::tests::setup;
 
     #[tokio::test]
     async fn gets_an_account_balance() {

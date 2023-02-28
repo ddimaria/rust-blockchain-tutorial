@@ -45,7 +45,6 @@ impl Web3 {
         let transaction_request = to_value(&transaction_request)?;
         let params = rpc_params![transaction_request];
         let response = self.send_rpc("eth_sendTransaction", params).await?;
-        println!("{:?}", response);
         let tx_hash: H256 = serde_json::from_value(response)?;
 
         Ok(tx_hash)
@@ -122,9 +121,9 @@ impl Web3 {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
-    use crate::helpers::tests::web3;
+    use crate::helpers::tests::{web3, ACCOUNT_1, ACCOUNT_2};
     use ethereum_types::U256;
     use std::time::Duration;
     use tokio::time::sleep;
@@ -132,15 +131,17 @@ mod tests {
     use utils::crypto::keypair;
 
     async fn transaction() -> Transaction {
-        let web3 = web3();
-        let accounts = web3.get_all_accounts().await.unwrap();
-        let from = accounts[0];
-        let to = accounts[1];
-
-        Transaction::new(from, to, U256::zero(), U256::zero(), None).unwrap()
+        Transaction::new(
+            *ACCOUNT_1,
+            Some(*ACCOUNT_2),
+            U256::from(10),
+            U256::zero(),
+            None,
+        )
+        .unwrap()
     }
 
-    async fn send_transaction() -> Result<H256> {
+    pub async fn send_transaction() -> Result<H256> {
         let transaction_request: TransactionRequest = transaction().await.into();
         web3().send(transaction_request).await
     }

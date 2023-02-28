@@ -27,6 +27,9 @@ pub enum ChainError {
     #[error("Block {0} not found")]
     BlockNotFound(String),
 
+    #[error("Could not create root hash for : {0}")]
+    CannotCreateRootHash(String),
+
     #[error("Error encoding/decoding: {0}")]
     EncodingDecodingError(String),
 
@@ -50,6 +53,9 @@ pub enum ChainError {
 
     #[error("Could not open the database: {0}")]
     StorageCannotOpenDb(String),
+
+    #[error("Could not destroy the database: {0}")]
+    StorageDestroyError(String),
 
     #[error("Could not find {0} in storage")]
     StorageNotFound(String),

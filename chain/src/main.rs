@@ -14,6 +14,7 @@ mod method;
 mod server;
 mod storage;
 mod transaction;
+mod world_state;
 
 // use std::sync::Arc;
 
@@ -25,6 +26,7 @@ use server::serve;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // TODO(ddimaria): remove hard-coded values and implement a genesis file (or via command line when starting the chain)
     // let storage = Arc::new(Storage::new(None)?);
     // let blockchain = BlockChain::new(storage)?;
     // let _server = serve("127.0.0.1:8545", Arc::new(Mutex::new(blockchain))).await?;

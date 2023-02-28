@@ -1,5 +1,4 @@
 use crate::error::{Result, UtilsError};
-use blake2::{Blake2s256, Digest};
 use ethereum_types::{Address, H160, H256, U256};
 use lazy_static::lazy_static;
 use rlp::{Encodable, RlpStream};
@@ -7,6 +6,7 @@ pub use secp256k1::{
     ecdsa::{RecoverableSignature, RecoveryId, Signature as EcdsaSignature},
     generate_keypair, rand, All, Message, PublicKey, Secp256k1, SecretKey,
 };
+use sha3::{Digest, Keccak256};
 
 // reuse context throughout
 lazy_static! {
@@ -132,12 +132,12 @@ pub fn private_key_address(key: &SecretKey) -> H160 {
 /// let message = b"The message";
 /// let hashed = hash(message);
 /// assert_eq!(hashed, [
-///     249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
-///     43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
+///     174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
+///     197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
 /// ]);
 /// ```
 pub fn hash(bytes: &[u8]) -> [u8; 32] {
-    Blake2s256::digest(bytes).into()
+    Keccak256::digest(bytes).into()
 }
 
 /// Sign a message with a private key
@@ -287,8 +287,8 @@ mod tests {
         assert_eq!(
             hashed,
             [
-                249, 235, 249, 23, 35, 185, 112, 193, 64, 21, 20, 170, 209, 177, 233, 194, 117, 1,
-                43, 131, 212, 242, 71, 101, 234, 235, 66, 156, 229, 63, 88, 98
+                174, 253, 38, 204, 75, 207, 36, 167, 252, 109, 46, 248, 163, 40, 95, 14, 14, 198,
+                197, 2, 119, 153, 141, 102, 195, 214, 250, 111, 247, 123, 45, 64
             ]
         );
     }

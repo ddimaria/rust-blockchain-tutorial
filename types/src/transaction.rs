@@ -27,15 +27,15 @@ use crate::error::{Result, TypeError};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all(serialize = "camelCase", deserialize = "camelCase"))]
 pub struct Transaction {
-    pub data: Option<Bytes>,
     pub from: Address,
     pub to: Option<Address>,
-    pub gas: U256,
-    pub gas_price: U256,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hash: Option<H256>,
     pub nonce: U256,
     pub value: U256,
+    pub data: Option<Bytes>,
+    pub gas: U256,
+    pub gas_price: U256,
 }
 
 /// On Ethereum there are a few different types of transactions:
@@ -68,8 +68,8 @@ impl Transaction {
         };
 
         let serialized = bincode::serialize(&transaction)?;
-        let hashed: H256 = hash(&serialized).into();
-        transaction.hash = Some(hashed);
+        let hash: H256 = hash(&serialized).into();
+        transaction.hash = Some(hash);
 
         Ok(transaction)
     }

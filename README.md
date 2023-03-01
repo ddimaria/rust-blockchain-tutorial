@@ -30,7 +30,11 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
 - [Introduction](#introduction)
 - [Ethereum Primitives](#ethereum-primitives)
   - [Accounts](#accounts)
+    - [Nonce](#nonce)
   - [Transactions](#transactions)
+    - [Kinds of Transactions](#kinds-of-transactions)
+    - [Transaction Hashes](#transaction-hashes)
+    - [Transaction Signing](#transaction-signing)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -115,22 +119,124 @@ It's important to note that addresses (accounts) are iniatiated outside of a blo
 
 Accounts are also deterministic.  That is, given the same inputs, the same address is always generated.
 
+#### Nonce
+
+Accounts have an associated `nonce`.  A nonce is an acronym for "number only used once" and is a counter of the number of processed transactions for a given account.  It is to be incremented every time a new transaction is submitted.  User's must keep track of their own nonces, though wallet providers can do this as well.  Anyone can query the blockchain for current nonce of an account (EOA and contract), which can be helpful for determining the next nonce to use.
+
+The main purpose of a nonce is to make a data structure unique, so that each data structure is explicit regarding otherwise identical data being effectively different.  We'll discuss nonces more when breaking down transactions and how blockchain nodes use them to preserve the order of processing submitted transactions.
+
 ### Transactions
 
-Transactions are the heart of a blockchain.  Without them, the chain's state would remain unchanged.  Transactions drive state changes.
+Transactions are the heart of a blockchain.  Without them, the chain's state would remain unchanged.  Transactions drive state changes.  They are submitted externally owned accounts only (i.e. not a contract account).
 
 ```rust
 pub struct Transaction {
-    pub data: Option<Bytes>,
     pub from: Address,
-    pub gas: U256,
-    pub gas_price: U256,
+    pub to: Option<Address>,
     pub hash: Option<H256>,
     pub nonce: U256,
-    pub to: Address,
     pub value: U256,
+    pub data: Option<Bytes>,
+    pub gas: U256,
+    pub gas_price: U256,
 }
 ```
+
+While the `Transaction` data structure has much more fields in Ethereum than shown above, the data subset we're using is the minimum needed to understand transactions.
+
+* The `from` portion of a transaction identifies the transaction sender.  This account must already exist on the blockchain.
+* The `to` attribute represents the receiver of the value transferred in a transaction.  It can also be a contract address, where code is executed.  It is optional because it is left empty (or zero or null) to signify a transaction that deploys a contract.
+* A `hash` attribute contains the hash of the transaction.  It's optional so that it can be calculated after the other values in the transaction are populated.
+* The `nonce` is the sender's next account nonce.  It is the existing account nonce incremented by one.  Multiple transactions submitted consecutively must incremented manually as the current account nonce won't change on chain until the transactions are processed.
+* `value` indicates the amount of `coin` to transfer from the sender to the recipient.  This number can be zero for non-value-transferring transactions.
+* The `data` attribute can hold various pieces of data.  When deploying a contract, it holds bytes of the assembled contract code.  When executing a function on a contract, it holds the function name and parameters.  It can also be any piece of data that the sender wants to include in the transaction.
+* `gas` is the total number of units that the sender is offering to pay for the transaction.  We'll discuss this in more detail later.
+* The `gas_price` is the amount of `coin` (eth in Ethereum) to be paid for each unit of `gas`.
+
+#### Kinds of Transactions
+
+There are 3 ways that transaction can be used:
+
+```rust
+
+pub enum TransactionKind {
+    Regular(Address, Address),
+    ContractDeployment(Address, Bytes),
+    ContractExecution(Address, Address, Bytes),
+}
+```
+
+* `Regular` transactions are ones where value is transferred from one account to another.
+* `Contract deployment` transactions are used to deploy contract code to the blockchain and are without a 'to' address, where the data field is used for the contract code.
+* `Contract execution` transactions interact with a deployed smart contract. In this case, 'to' address is the smart contract address.
+
+The type of transaction is derived from the values in the transaction:
+
+```rust
+fn kind(self) -> Result<TransactionKind> {
+    match (self.from, self.to, self.data) {
+        (from, Some(to), None) => Ok(TransactionKind::Regular(from, to)),
+        (from, None, Some(data)) => Ok(TransactionKind::ContractDeployment(from, data)),
+        (from, Some(to), Some(data)) => Ok(TransactionKind::ContractExecution(from, to, data)),
+        _ => Err(TypeError::InvalidTransaction("kind".into())),
+    }
+}
+```
+
+#### Transaction Hashes
+
+Once a transaction data structure is filled in, the hash can be calculated:
+
+```rust
+let serialized = bincode::serialize(&transaction)?;
+let hash: H256 = hash(&serialized).into();
+```
+
+We first encode/serialize the transaction and then apply a hashing function.  To keep things simple, we're using [Bincode](https://github.com/bincode-org/bincode) to serialize and compress the data to a binary format throughout this blockchain.  Ethereum uses [RLP Encoding](https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/) for most of it's encoding/serialization.
+
+#### Transaction Signing
+
+Transactions must be signed before they are submitted to the blockchain.
+
+```rust
+fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
+    let encoded = bincode::serialize(&self)?;
+    let recoverable_signature = sign_recovery(&encoded, &key)?;
+    let (_, signature_bytes) = recoverable_signature.serialize_compact();
+    let Signature { v, r, s } = recoverable_signature.into();
+    let transaction_hash = hash(&signature_bytes).into();
+
+    let signed_transaction = SignedTransaction {
+        v,
+        r,
+        s,
+        raw_transaction: encoded.into(),
+        transaction_hash,
+    };
+
+    Ok(signed_transaction)
+}
+```
+
+Signing is done with the account holder's private key in order to generate a recoverable signature of the transaction.  We'll discuss basic cryptography in more detail later, but a recoverable signature is one where a public key can be derived from the signature and message.  This is important as it's how the blockchain validates the transaction.  Once the public key is recovered, it is hashed and must match the `from` address of the transaction.
+
+The resulting `SignedTransaction` data structure is represented as:
+
+```rust
+struct SignedTransaction {
+    v: u64,
+    r: H256,
+    s: H256,
+    raw_transaction: Bytes,
+    transaction_hash: H256,
+}
+```
+
+The `v`, `r`, and `s` values represent the digital signature.  The `v` attribute is the recovery id that is used to derive the account holder's public key.  `r` and `s` hold values related to the signature (`r` is the value and `s` is the proof).
+
+The transaction encoded and compressed and is stored as bytes in the `raw_transaction` attribute.  This minimizes the footprint of the packet.
+
+The `transaction_hash` will be the transaction id in the blockchain.  It serves many purposes, and can be used to validate that the reconstructed transaction wasn't tampered with.
 
 ## Organization
 

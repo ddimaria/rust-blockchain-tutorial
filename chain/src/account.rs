@@ -102,7 +102,7 @@ impl AccountStorage {
         Ok(nonce)
     }
 
-    pub(crate) fn hash_root(&mut self) -> Result<H256> {
+    pub(crate) fn root_hash(&mut self) -> Result<H256> {
         let root_hash = self
             .trie
             .root_hash()
@@ -161,12 +161,12 @@ mod tests {
     }
 
     #[test]
-    fn hash_root_changes() {
+    fn root_hash_changes() {
         let mut account_storage = new_account_storage();
-        let hash_root_1 = account_storage.hash_root().unwrap();
+        let root_hash_1 = account_storage.root_hash().unwrap();
         let (_, _) = add_account(&mut account_storage);
-        let hash_root_2 = account_storage.hash_root().unwrap();
+        let root_hash_2 = account_storage.root_hash().unwrap();
 
-        assert_ne!(hash_root_1, hash_root_2);
+        assert_ne!(root_hash_1, root_hash_2);
     }
 }

@@ -145,11 +145,9 @@ impl Transaction {
         transactions.iter().try_for_each(|transaction| {
             trie.insert(
                 transaction.transaction_hash()?.as_bytes(),
-                bincode::serialize(&transaction)
-                    .map_err(|e| TypeError::EncodingDecodingError(e.to_string()))?
-                    .as_slice(),
+                bincode::serialize(&transaction)?.as_slice(),
             )
-            .map_err(|e| TypeError::EncodingDecodingError(e.to_string()))
+            .map_err(|e| TypeError::TrieError(format!("Error inserting transactions: {}", e)))
         })?;
 
         Ok(trie)
@@ -159,7 +157,7 @@ impl Transaction {
         let mut trie = Self::to_trie(transactions)?;
         let root_hash = trie
             .root_hash()
-            .map_err(|e| TypeError::UtilError(e.to_string()))?;
+            .map_err(|e| TypeError::TrieError(format!("Error calculating root hash: {}", e)))?;
 
         Ok(H256::from_slice(root_hash.as_bytes()))
     }

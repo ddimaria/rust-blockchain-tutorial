@@ -27,6 +27,9 @@ pub enum TypeError {
     MissingTransactionHash,
 
     #[error("{0}")]
+    TrieError(String),
+
+    #[error("{0}")]
     UtilError(String),
 }
 

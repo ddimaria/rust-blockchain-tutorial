@@ -155,7 +155,7 @@ impl Transaction {
         Ok(trie)
     }
 
-    pub fn hash_root(transactions: &[Transaction]) -> Result<H256> {
+    pub fn root_hash(transactions: &[Transaction]) -> Result<H256> {
         let mut trie = Self::to_trie(transactions)?;
         let root_hash = trie
             .root_hash()
@@ -275,10 +275,10 @@ mod tests {
     }
 
     #[test]
-    fn hash_root() {
+    fn root_hash() {
         let transaction_1 = new_transaction();
         let transaction_2 = new_transaction();
-        let root = Transaction::hash_root(&vec![transaction_1, transaction_2]).unwrap();
+        let root = Transaction::root_hash(&vec![transaction_1, transaction_2]).unwrap();
         let expected =
             H256::from_str("0x637fbee17e66aa4afb552b6a21c7695e2b5e44bf3f658b18b928170cc051bdf6")
                 .unwrap();

@@ -82,7 +82,7 @@ pub mod tests {
         let transaction =
             Transaction::new(*ACCOUNT_1, Some(*ACCOUNT_2), value, U256::zero(), None).unwrap();
 
-        blockchain.new_block(vec![transaction]);
+        blockchain.new_block(vec![transaction], H256::zero());
 
         (Arc::new(Mutex::new(blockchain)), *ACCOUNT_1, *ACCOUNT_2)
     }

@@ -20,6 +20,9 @@ pub enum TypeError {
     #[error("Invalid transaction: {0}")]
     InvalidTransaction(String),
 
+    #[error("Missing block hash")]
+    MissingBlockHash,
+
     #[error("Missing transaction hash")]
     MissingTransactionHash,
 

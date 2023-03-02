@@ -35,6 +35,9 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
     - [Kinds of Transactions](#kinds-of-transactions)
     - [Transaction Hashes](#transaction-hashes)
     - [Transaction Signing](#transaction-signing)
+  - [Blocks](#blocks)
+    - [Block Validation](#block-validation)
+    - [Genesis Block](#genesis-block)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -237,6 +240,76 @@ The `v`, `r`, and `s` values represent the digital signature.  The `v` attribute
 The transaction encoded and compressed and is stored as bytes in the `raw_transaction` attribute.  This minimizes the footprint of the packet.
 
 The `transaction_hash` will be the transaction id in the blockchain.  It serves many purposes, and can be used to validate that the reconstructed transaction wasn't tampered with.
+
+
+### Blocks
+
+Blocks essentially containers for validated transactions.  Once a set of transactions are validated, they are ready to be added to a block.
+
+```rust
+struct Block {
+    number: U64,
+    hash: Option<H256>,
+    parent_hash: H256,
+    transactions: Vec<Transaction>,
+    transactions_root: H256,
+    state_root: H256,
+}
+```
+
+A Block `number` is an incremented unsigned integer.  All blocks are in order, and there are no missing blocks.  Blocks start at zero (called the `Genesis Block`).  Similar to transactions, blocks have a `hash` of their values:
+
+```rust
+let serialized = bincode::serialize(&block)?;
+let hash: H256 = hash(&serialized).into();
+block.hash = Some(hash);
+```
+
+The `parent_hash` is the hash of the previous block.  This links blocks together and are critical in blockchain validation.  All transactions are within the block and are needed for the block verification process.
+
+The `transaction_root` is the Merkle Root of all of the transactions in the block:
+
+```rust
+fn to_trie(transactions: &[Transaction]) -> Result<EthTrie<MemoryDB>> {
+    let memdb = Arc::new(MemoryDB::new(true));
+    let mut trie = EthTrie::new(memdb);
+
+    transactions.iter().try_for_each(|transaction| {
+        trie.insert(
+            transaction.transaction_hash()?.as_bytes(),
+            bincode::serialize(&transaction)?,
+        )?
+    })?;
+
+    Ok(trie)
+}
+
+fn root_hash(transactions: &[Transaction]) -> Result<H256> {
+    let mut trie = Transaction::to_trie(transactions)?;
+    let root_hash = trie.root_hash()?;
+
+    Ok(H256::from_slice(root_hash.as_bytes()))
+}
+```
+
+The `state_root` is the Merkle Root of all state within the blockchain.  We'll detail this more when discussing Global State.
+
+#### Block Validation
+
+_TODO: fill in_
+
+
+#### Genesis Block
+
+The first block in a blockchain is called the `genesis block`.  We're using a naive implementation to create an empty block with no state:
+
+```rust
+fn genesis() -> Result<Self> {
+    Block::new(U64::zero(), H256::zero(), vec![], H256::zero())
+}
+```
+
+In Ethereum, the genesis block is created using a `genisis file`.  This file contains configuration information and details the accounts to create and the amount of Eth they each get.  This is where the initial Eth comes from, though additional Eth is created for miners.  The movement to Proof of Stake in Ethereum V2 transforms miners to validators, and changes the reward mechanism.  We'll talk more about this in the consensus section.
 
 ## Organization
 

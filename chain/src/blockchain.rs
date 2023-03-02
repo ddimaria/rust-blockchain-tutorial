@@ -70,22 +70,16 @@ impl BlockChain {
         }
     }
 
-    pub(crate) fn new_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
+    pub(crate) fn new_block(
+        &mut self,
+        transactions: Vec<Transaction>,
+        state_trie: H256,
+    ) -> Result<Block> {
         // TODO(ddimaria): make this an atomic operation
         let current_block = self.get_current_block()?;
         let number = current_block.number + 1_u64;
-        let parent_hash = current_block
-            .hash
-            .ok_or_else(|| ChainError::MissingHash(current_block.number.to_string()))?;
-        let serialized = bincode::serialize(&(number, parent_hash, &transactions))?;
-        let nonce = Keccak256::digest(serialized);
-
-        let block = Block::new(
-            number,
-            H256::from(nonce.as_ref()),
-            parent_hash,
-            transactions,
-        )?;
+        let parent_hash = current_block.block_hash()?;
+        let block = Block::new(number, parent_hash, transactions, state_trie)?;
 
         self.blocks.push(block);
 
@@ -188,8 +182,14 @@ impl BlockChain {
                 processed.push(transaction);
             }
 
+            // update world state
+            let state_trie = self.accounts.root_hash()?;
+            self.world_state.update_state_trie(state_trie);
+
+            tracing::info!("World State: state_trie {:?}", state_trie);
+
             let num_processed = processed.len();
-            let block = self.new_block(processed)?;
+            let block = self.new_block(processed, state_trie)?;
 
             tracing::info!(
                 "Created block {} with {} transactions",
@@ -209,12 +209,6 @@ impl BlockChain {
                     .receipts
                     .insert(receipt.transaction_hash, receipt);
             }
-
-            // update world state
-            let state_trie = self.accounts.hash_root()?;
-            self.world_state.update_state_trie(state_trie);
-
-            tracing::info!("World State: state_trie {:?}", state_trie);
 
             let storage = self.transactions.lock().await;
 
@@ -299,7 +293,7 @@ pub(crate) mod tests {
     async fn creates_and_gets_a_block() {
         let mut blockchain = new_blockchain();
         let block_number = blockchain.get_current_block().unwrap().number;
-        let response = blockchain.new_block(vec![new_transaction(Account::random())]);
+        let response = blockchain.new_block(vec![new_transaction(Account::random())], H256::zero());
         assert!(response.is_ok());
 
         let new_block_number = blockchain.get_current_block().unwrap().number;

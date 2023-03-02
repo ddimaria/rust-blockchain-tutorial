@@ -36,8 +36,11 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
     - [Transaction Hashes](#transaction-hashes)
     - [Transaction Signing](#transaction-signing)
   - [Blocks](#blocks)
-    - [Block Validation](#block-validation)
     - [Genesis Block](#genesis-block)
+- [Basic Cryptography](#basic-cryptography)
+  - [Public Key Cryptography](#public-key-cryptography)
+  - [Hashing](#hashing)
+  - [Address](#address)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -241,7 +244,6 @@ The transaction encoded and compressed and is stored as bytes in the `raw_transa
 
 The `transaction_hash` will be the transaction id in the blockchain.  It serves many purposes, and can be used to validate that the reconstructed transaction wasn't tampered with.
 
-
 ### Blocks
 
 Blocks essentially containers for validated transactions.  Once a set of transactions are validated, they are ready to be added to a block.
@@ -294,11 +296,6 @@ fn root_hash(transactions: &[Transaction]) -> Result<H256> {
 
 The `state_root` is the Merkle Root of all state within the blockchain.  We'll detail this more when discussing Global State.
 
-#### Block Validation
-
-_TODO: fill in_
-
-
 #### Genesis Block
 
 The first block in a blockchain is called the `genesis block`.  We're using a naive implementation to create an empty block with no state:
@@ -310,6 +307,73 @@ fn genesis() -> Result<Self> {
 ```
 
 In Ethereum, the genesis block is created using a `genisis file`.  This file contains configuration information and details the accounts to create and the amount of Eth they each get.  This is where the initial Eth comes from, though additional Eth is created for miners.  The movement to Proof of Stake in Ethereum V2 transforms miners to validators, and changes the reward mechanism.  We'll talk more about this in the consensus section.
+
+## Basic Cryptography
+
+We've talked about public and private keys, addresses, and hashes, but dive a little deeper into what they are.
+
+### Public Key Cryptography
+
+Public Key Cryptography is asymetric encryption, where there are public and private keys (key pair).  This is different from symmetric encryption that uses the same key to encrypt and decrypt.
+
+There are differnt flavors of public key cryptography.  In this project we're using [Secp256k1](https://en.bitcoin.it/wiki/Secp256k1), which works with [ECDSA](https://en.bitcoin.it/wiki/Elliptic_Curve_Digital_Signature_Algorithm) signatures.  Secp256k1 is an elliptic curve.  We're not going to get into anything that complicated here, so just picture a line that's shaped like a door knob.  The public and private keys are just points on the curve.
+
+The public key is derived from the private key.  A key is just a number (unsigned 256-bit in our case).  While you can derive a public key from a private key, you cannot create a private key from a public one.
+
+Here's how the encryption works.  Bob wants to send Alice a secret message.  He first asks Alice for her public key, which he uses to encrypt the message.  He then sends the message to Alice and she uses her private key to decrypt the message.  If anyone intercepts the message, they can't read it unless they have Alice's private key.  Alice knows that the message was not altered and she can prove that Bob sent her a message.
+
+```rust
+use utils::crypto::keypair;
+
+let (private_key, public_key) = keypair();
+println!("{:?}", keypair());
+
+fn keypair() -> (SecretKey, PublicKey) {
+    generate_keypair(&mut rand::thread_rng())
+}
+```
+
+Outputs:
+
+```txt
+SecretKey(#2fd3a5f2b1f52597)
+PublicKey(6dfc30040b48fefe3e3cebe0ca2d5033189a93b50aeaa1876d21ea15fc756b6e3e8e48997fb1441464e254877fe898f6566488d2b0d578f2fbd31b48772be593)
+```
+
+### Hashing
+
+The concept of a hash is fairly straightforward.  A hash function accepts any size data and outputs a number of fixed length.  Anytime the input is the same, the output (e.g. the hash) will always be the same.  Another key component is that you cannot derive the original data from the hash.
+
+Hashes are used everywhere in blockchains.  They allow the formal verification that the source data was used to create it.  They are convenient ways of storing a proof of the input, without the burden of storing the data.
+
+```rust
+let public_key = 6dfc30040b48fefe3e3cebe0ca2d5033189a93b50aeaa1876d21ea15fc756b6e3e8e48997fb1441464e254877fe898f6566488d2b0d578f2fbd31b48772be593;
+let hash = hash(&public_key[1..]);
+println!("{:?}", hash);
+```
+
+Outputs:
+
+```txt
+[101, 35, 44, 44, 55, 13, 158, 100, 34, 209, 215, 186, 89, 105, 196, 45, 127, 154, 217, 113, 203, 127, 236, 66, 153, 233, 137, 207, 48, 140, 166, 244]
+```
+
+### Address
+
+We already know that an account on Ethereum is just an address, but what is an address?  It's simply the trailing 20 bytes from a hash.
+
+```rust
+let public_key = 6dfc30040b48fefe3e3cebe0ca2d5033189a93b50aeaa1876d21ea15fc756b6e3e8e48997fb1441464e254877fe898f6566488d2b0d578f2fbd31b48772be593;
+let hash = hash(&public_key[1..]);
+let address = Address::from_slice(&hash[12..]);
+println!("{:?}", address);
+```
+
+Outputs:
+
+```txt
+0x5969c42d7f9ad971cb7fec4299e989cf308ca6f4
+```
 
 ## Organization
 

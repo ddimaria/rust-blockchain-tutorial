@@ -132,6 +132,7 @@ impl From<TypeError> for ChainError {
         ChainError::TypeError(error.to_string())
     }
 }
+
 impl From<Box<bincode::ErrorKind>> for ChainError {
     fn from(error: Box<bincode::ErrorKind>) -> Self {
         ChainError::EncodingDecodingError(error.to_string())

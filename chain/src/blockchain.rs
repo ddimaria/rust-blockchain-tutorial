@@ -12,7 +12,7 @@ use crate::error::{ChainError, Result};
 use crate::storage::Storage;
 use crate::transaction::TransactionStorage;
 use crate::world_state::WorldState;
-use ethereum_types::{H256, U256, U64};
+use ethereum_types::{H256, U64};
 use tokio::sync::Mutex;
 use types::account::Account;
 use types::block::{Block, BlockNumber};
@@ -90,9 +90,7 @@ impl BlockChain {
     ) -> Result<H256> {
         let mut transaction: Transaction = transaction_request.try_into()?;
         let account = self.accounts.get_account(&transaction.from)?;
-        let nonce = transaction
-            .nonce
-            .unwrap_or_else(|| U256::from(account.nonce + 1_u64));
+        let nonce = transaction.nonce.unwrap_or_else(|| account.nonce + 1_u64);
 
         transaction.nonce = Some(nonce);
 
@@ -211,43 +209,50 @@ impl BlockChain {
         &mut self,
         transaction: &'a mut Transaction,
     ) -> Result<(&'a mut Transaction, TransactionReceipt)> {
-        let value = transaction.value;
         let mut contract_address: Option<Account> = None;
         let transaction_hash = transaction.transaction_hash()?;
-        let nonce = transaction.nonce.unwrap();
 
-        tracing::info!("Processing Transaction {:?}", transaction_hash);
+        // ignore transactions without a nonce
+        if let Some(nonce) = transaction.nonce {
+            tracing::info!("Processing Transaction {:?}", transaction_hash);
 
-        // create the `to` account if it doesn't exist
-        if let Some(to) = transaction.to {
-            self.accounts.add_empty_account(&to)?;
+            // create the `to` account if it doesn't exist
+            if let Some(to) = transaction.to {
+                self.accounts.add_empty_account(&to)?;
+            }
+
+            // TODO(ddimaria): remove this copy
+            let kind = transaction.to_owned().kind()?;
+
+            match kind {
+                TransactionKind::Regular(from, to, value) => {
+                    self.accounts.transfer(&from, &to, value)
+                }
+                TransactionKind::ContractDeployment(from, data) => {
+                    contract_address = self.accounts.add_contract_account(&from, data).ok();
+                    Ok(())
+                }
+                TransactionKind::ContractExecution(_from, _to, _data) => {
+                    unimplemented!()
+                }
+            }?;
+
+            // update the nonce
+            self.accounts.update_nonce(&transaction.from, nonce)?;
+
+            let transaction_receipt = TransactionReceipt {
+                block_hash: None,
+                block_number: None,
+                contract_address,
+                transaction_hash,
+            };
+
+            return Ok((transaction, transaction_receipt));
         }
 
-        // TODO(ddimaria): remove this copy
-        let kind = transaction.to_owned().kind()?;
-
-        match kind {
-            TransactionKind::Regular(from, to) => self.accounts.transfer(&from, &to, value),
-            TransactionKind::ContractDeployment(from, data) => {
-                contract_address = self.accounts.add_contract_account(&from, data).ok();
-                Ok(())
-            }
-            TransactionKind::ContractExecution(_from, _to, _data) => {
-                unimplemented!()
-            }
-        }?;
-
-        // update the nonce
-        self.accounts.update_nonce(&transaction.from, nonce)?;
-
-        let transaction_receipt = TransactionReceipt {
-            block_hash: None,
-            block_number: None,
-            contract_address,
-            transaction_hash,
-        };
-
-        Ok((transaction, transaction_receipt))
+        Err(ChainError::MissingTransactionNonce(
+            transaction_hash.to_string(),
+        ))
     }
 
     pub(crate) async fn get_transaction_receipt(

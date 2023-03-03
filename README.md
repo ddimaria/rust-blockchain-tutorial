@@ -43,9 +43,14 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
 - [Web3 Client - An Introduction](#web3-client---an-introduction)
 - [The Life of a Transaction](#the-life-of-a-transaction)
   - [Create a Transaction](#create-a-transaction)
-    - [Transaction Signing](#transaction-signing)
+  - [Transaction Signing](#transaction-signing)
   - [Submitting a Transaction](#submitting-a-transaction)
   - [Receiving a Transaction](#receiving-a-transaction)
+  - [Verifying a Signed Transaction](#verifying-a-signed-transaction)
+  - [Add the Transaction to the Mempool](#add-the-transaction-to-the-mempool)
+  - [Kickoff the Transaction Processor](#kickoff-the-transaction-processor)
+  - [Processing Transactions](#processing-transactions)
+  - [Processing a Single Transaction](#processing-a-single-transaction)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -171,7 +176,7 @@ There are 3 ways that transaction can be used:
 ```rust
 
 pub enum TransactionKind {
-    Regular(Address, Address),
+    Regular(Address, Address, U256),
     ContractDeployment(Address, Bytes),
     ContractExecution(Address, Address, Bytes),
 }
@@ -186,7 +191,7 @@ The type of transaction is derived from the values in the transaction:
 ```rust
 fn kind(self) -> Result<TransactionKind> {
     match (self.from, self.to, self.data) {
-        (from, Some(to), None) => Ok(TransactionKind::Regular(from, to)),
+        (from, Some(to), None) => Ok(TransactionKind::Regular(from, to, self.value)),
         (from, None, Some(data)) => Ok(TransactionKind::ContractDeployment(from, data)),
         (from, Some(to), Some(data)) => Ok(TransactionKind::ContractExecution(from, to, data)),
         _ => Err(TypeError::InvalidTransaction("kind".into())),
@@ -424,7 +429,7 @@ In this transaction, we're sending 10 coin from the `0x4a0d457e884ebd9b9773d172e
 
 Now that we have a transaction, let's sign it.
 
-#### Transaction Signing
+### Transaction Signing
 
 Transactions must be signed before they are submitted to the blockchain.
 
@@ -528,6 +533,8 @@ async fn send_raw_transaction(&mut self, transaction: Bytes) -> Result<H256> {
 }
 ```
 
+### Verifying a Signed Transaction
+
 The chain first deserializes the raw bytes into a `SignedTransaction` struct.  To recap, that struct is:
 
 ```rust
@@ -574,22 +581,205 @@ fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> Result<bool> {
 }
 ```
 
-We can also verify that the public key address matches the `from` attribute of a transaction, which completes the transaction verification process.  Now we can safely add the transaction to the mempool:
+We can also verify that the public key address matches the `from` attribute of a transaction, which completes the transaction verification process.  
+
+### Add the Transaction to the Mempool
+
+Now we can safely add the transaction to the mempool:
 
 ```rust
 async fn send_transaction(
     &mut self,
     transaction_request: TransactionRequest,
 ) -> Result<H256> {
-    let transaction: Transaction = transaction_request.try_into()?;
-    let hash = transaction.transaction_hash()?;
+    let mut transaction: Transaction = transaction_request.try_into()?;
+    let account = self.accounts.get_account(&transaction.from)?;
+    let nonce = transaction.nonce.unwrap_or_else(|| account.nonce + 1_u64);
+
+    transaction.nonce = Some(nonce);
+
+    // regenerate the transaction hash with the nonce in place
+    let transaction_hash = transaction.hash()?;
 
     // add to the transaction mempool
     self.transactions.lock().await.send_transaction(transaction);
 
-    Ok(hash)
+    Ok(transaction_hash)
 }
 ```
+
+The mempool is where pending transactions are stored while they wait to be processed. 
+
+### Kickoff the Transaction Processor
+
+Transactions are processed by a timer running in a separate Tokio thread every second:
+
+```rust
+let transaction_processor = task::spawn(async move {
+    let mut interval = time::interval(Duration::from_millis(1000));
+
+    loop {
+        interval.tick().await;
+
+        if let Err(error) = blockchain_for_transaction_processor
+            .lock()
+            .await
+            .process_transactions()
+            .await
+        {
+            tracing::error!("Error processing transactions {}", error.to_string());
+        }
+    }
+});
+```
+
+This kicks off transaction processing.  We don't want our processor to panic at any point, so errors that occur while processing transactions are simply logged out.
+
+### Processing Transactions
+
+In our naive implementation, we're ignoring gas and just processing transactions in a first in, first out (FIFO) methodology.  Ethereum validators can optimize the processing order of transactions by evaluating the maximum amount of gas they can receive by processing any given transactions.
+
+We first drain the mempool queue, which prevents the processor that runs 1 second later from competing with processing the same transactions.
+
+```rust
+async fn process_transactions(&mut self) -> Result<()> {
+    let transactions = self
+        .transactions
+        .lock()
+        .await
+        .mempool
+        .drain(0..)
+        .collect::<VecDeque<_>>();
+
+    if !transactions.is_empty() {
+        let mut receipts: Vec<TransactionReceipt> = vec![];
+        let mut processed: Vec<Transaction> = vec![];
+
+        for mut transaction in transactions.into_iter() {
+            match self.process_transaction(&mut transaction) {
+                Ok((transaction, transaction_receipt)) => {
+                    receipts.push(transaction_receipt);
+                    processed.push(transaction.to_owned());
+                }
+                Err(error) => {
+                    match error {
+                        // The nonce is too high, add back to the mempool
+                        ChainError::NonceTooHigh(_, _) => {
+                            self.transactions
+                                .lock()
+                                .await
+                                .mempool
+                                .push_back(transaction);
+                        }
+                        _ => {},
+                    }
+                }
+            }
+        }
+
+        // update world state
+        let state_trie = self.accounts.root_hash()?;
+        self.world_state.update_state_trie(state_trie);
+
+        let block = self.new_block(processed, state_trie)?;
+
+        // now add the block number and hash to the receipts
+        for mut receipt in receipts.into_iter() {
+            receipt.block_number = Some(BlockNumber(block.number));
+            receipt.block_hash = block.hash;
+
+            self.transactions
+                .clone()
+                .lock()
+                .await
+                .receipts
+                .insert(receipt.transaction_hash, receipt);
+        }
+    }
+
+    Ok(())
+}
+```
+
+We'll talk about processing an individual transaction in the next section.  Errors in processing a transaction are ignored and discarded except if the account nonce of a transaction is higher than the next available nonce.  It's very possible that an account sent several transactions at once, and we don't want to throw that transaction away.  The transaction is simple added into the back of the mempool for later processing.
+
+Once the blockchain processes a transaction, the world state is updated.  In our blockchain, the world state is simply the Merkel Root of all accounts on the blockchain.  This is essentially the proof of the state transaction between blocks.
+
+The new block is then added to the blockchain.
+
+### Processing a Single Transaction
+
+```rust
+fn process_transaction<'a>(
+    &mut self,
+    transaction: &'a mut Transaction,
+) -> Result<(&'a mut Transaction, TransactionReceipt)> {
+    let value = transaction.value;
+    let mut contract_address: Option<Account> = None;
+    let transaction_hash = transaction.transaction_hash()?;
+
+    // ignore transactions without a nonce
+    if let Some(nonce) = transaction.nonce {
+        // create the `to` account if it doesn't exist
+        if let Some(to) = transaction.to {
+            self.accounts.add_empty_account(&to)?;
+        }
+
+        let kind = transaction.to_owned().kind()?;
+
+        match kind {
+            TransactionKind::Regular(from, to, value) => {
+                self.accounts.transfer(&from, &to, value)
+            }
+            TransactionKind::ContractDeployment(from, data) => {
+                contract_address = self.accounts.add_contract_account(&from, data).ok();
+                Ok(())
+            }
+            TransactionKind::ContractExecution(_from, _to, _data) => {
+                unimplemented!()
+            }
+        }?;
+
+        // update the nonce
+        self.accounts.update_nonce(&transaction.from, nonce)?;
+
+        let transaction_receipt = TransactionReceipt {
+            block_hash: None,
+            block_number: None,
+            contract_address,
+            transaction_hash,
+        };
+
+        return Ok((transaction, transaction_receipt));
+    }
+
+    Err(ChainError::MissingTransactionNonce(
+        transaction_hash.to_string(),
+    ))
+}
+```
+
+The first step is to add the `to` account to the account storage if it doesn't already exist.  The blockchain then evaluates the kind of transaction it's processing.  The simplest type of a transaction is the `regular` one, which is just a coin transfer.
+
+A contract deployment is fairly straightforward as well.  First, a contract account is created, using the `from` address and the current `nonce` as inputs to the address hash.
+
+```rust
+pub fn add_contract_account(&mut self, key: &Account, data: Bytes) -> Result<Account> {
+    let nonce = self.get_account(key)?.nonce;
+    let serialized = bincode::serialize(&(key, nonce))?;
+    let account = to_address(&serialized);
+    let account_data = AccountData::new(Some(data));
+    self.add_account(&account, &account_data)?;
+
+    Ok(account)
+}
+```
+
+Code received gets added to the `to` account's `code_hash` attribute.
+
+_TODO: document processing a contract execution_
+
+After the transaction is processed, the `from` account's `nonce` is updated.  A `transaction receipt` is created and returned from the function.
 
 ## Organization
 

@@ -72,7 +72,7 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
 
     transaction_processor
         .await
-        .map_err(|e| ChainError::InteralError(e.to_string()))?;
+        .map_err(|e| ChainError::InternalError(e.to_string()))?;
 
     Ok(server_handle)
 }

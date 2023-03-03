@@ -43,7 +43,7 @@ pub struct Transaction {
 ///   * Contract deployment transactions: a transaction without a 'to' address, where the data field is used for the contract code.
 ///   * Execution of a contract: a transaction that interacts with a deployed smart contract. In this case, 'to' address is the smart contract address.
 pub enum TransactionKind {
-    Regular(Address, Address),
+    Regular(Address, Address, U256),
     ContractDeployment(Address, Bytes),
     ContractExecution(Address, Address, Bytes),
 }
@@ -86,7 +86,7 @@ impl Transaction {
 
     pub fn kind(self) -> Result<TransactionKind> {
         match (self.from, self.to, self.data) {
-            (from, Some(to), None) => Ok(TransactionKind::Regular(from, to)),
+            (from, Some(to), None) => Ok(TransactionKind::Regular(from, to, self.value)),
             (from, None, Some(data)) => Ok(TransactionKind::ContractDeployment(from, data)),
             (from, Some(to), Some(data)) => Ok(TransactionKind::ContractExecution(from, to, data)),
             _ => Err(TypeError::InvalidTransaction("kind".into())),

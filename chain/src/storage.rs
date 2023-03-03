@@ -5,7 +5,7 @@ use rocksdb::{Options, DB};
 
 use crate::error::{ChainError, Result};
 
-const PATH: &str = ".tmp";
+const PATH: &str = "./../.tmp";
 const DATABASE_NAME: &str = "db";
 
 #[derive(Debug)]

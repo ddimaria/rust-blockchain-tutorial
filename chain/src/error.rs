@@ -37,7 +37,7 @@ pub enum ChainError {
     DeserializeError(String),
 
     #[error("Interal Error: {0}")]
-    InteralError(String),
+    InternalError(String),
 
     #[error("Invalid block number {0}")]
     InvalidBlockNumber(String),
@@ -47,6 +47,9 @@ pub enum ChainError {
 
     #[error("Parent hash is missing: {0}")]
     MissingHash(String),
+
+    #[error("Missing nonce for transaction: {0}")]
+    MissingTransactionNonce(String),
 
     #[error("Nonce {0} too high for account {1}")]
     NonceTooHigh(String, String),

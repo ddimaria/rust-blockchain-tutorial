@@ -31,8 +31,15 @@ impl AccountStorage {
             .map_err(|_| ChainError::StoragePutError(Storage::key_string(key)))
     }
 
-    pub(crate) fn add_empty_account(&mut self, key: &Account) -> Result<()> {
-        self.add_account(key, &AccountData::new(None))
+    /// Add an account with default account data.
+    /// Skip if the account already exists.
+    pub(crate) fn add_empty_account(&mut self, key: &Account) -> Result<bool> {
+        let should_add = self.get_account(key).is_err();
+        if should_add {
+            self.add_account(key, &AccountData::new(None))?;
+        }
+
+        Ok(should_add)
     }
 
     pub fn add_contract_account(&mut self, key: &Account, data: Bytes) -> Result<Account> {

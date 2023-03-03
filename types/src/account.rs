@@ -18,7 +18,7 @@ pub type Account = Address;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AccountData {
-    pub nonce: u64,
+    pub nonce: U256,
     pub balance: U256,
     pub code_hash: Option<Bytes>,
 }
@@ -26,7 +26,7 @@ pub struct AccountData {
 impl AccountData {
     pub fn new(code_hash: Option<Bytes>) -> Self {
         Self {
-            nonce: 0,
+            nonce: U256::zero(),
             balance: U256::zero(),
             code_hash,
         }

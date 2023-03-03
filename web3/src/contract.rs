@@ -40,6 +40,7 @@ impl Web3 {
             gas,
             gas_price,
             data: Some(data),
+            nonce: None,
             r: None,
             s: None,
         };

@@ -6,6 +6,14 @@ This Web3 driver is a learning aid for understanding how real Web3 drivers inter
 
 This crate interacts with the Hardhat chain in the [contracts](../contracts) directory.
 
+## Running Tests
+
+In order to have nonces in the right order, run the tests in single-threaded mode:
+
+```shell
+cargo test -- --test-threads=1
+```
+
 ## Create a Web3 Instance
 
 ```rust

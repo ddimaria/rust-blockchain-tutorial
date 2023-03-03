@@ -80,9 +80,20 @@ impl AccountStorage {
     }
 
     // TODO(ddimaria): remove
-    pub(crate) fn increment_nonce(&mut self, key: &Account) -> Result<u64> {
+    pub(crate) fn update_nonce(&mut self, key: &Account, nonce: U256) -> Result<U256> {
         let mut account_data = self.get_account(key)?;
-        account_data.nonce += 1;
+
+        // the passed in nonce is lower than the current nonce + 1
+        if nonce < account_data.nonce + 1 {
+            return Err(ChainError::NonceTooLow(nonce.to_string(), key.to_string()));
+        }
+
+        // the passed in nonce is higher than the current nonce + 1
+        if nonce > account_data.nonce + 1 {
+            return Err(ChainError::NonceTooHigh(nonce.to_string(), key.to_string()));
+        }
+
+        account_data.nonce = nonce;
         self.upsert(key, &account_data)?;
 
         Ok(account_data.nonce)
@@ -95,11 +106,6 @@ impl AccountStorage {
     ) -> Result<U256> {
         let balance = self.get_account(key)?.balance;
         Ok(balance)
-    }
-
-    pub(crate) fn get_nonce(&self, key: &Account) -> Result<u64> {
-        let nonce = self.get_account(key)?.nonce;
-        Ok(nonce)
     }
 
     pub(crate) fn root_hash(&mut self) -> Result<H256> {
@@ -145,12 +151,12 @@ mod tests {
         let mut account_storage = new_account_storage();
         let (_, id) = add_account(&mut account_storage);
         let reteived_account_data = account_storage.get_account(&id).unwrap();
-        assert_eq!(reteived_account_data.nonce, 0);
+        assert_eq!(reteived_account_data.nonce, U256::zero());
 
-        account_storage.increment_nonce(&id).unwrap();
+        let next_nonce = U256::from(1);
+        account_storage.update_nonce(&id, next_nonce).unwrap();
         let reteived_account_data = account_storage.get_account(&id).unwrap();
-        dbg!(&reteived_account_data);
-        assert_eq!(reteived_account_data.nonce, 1);
+        assert_eq!(reteived_account_data.nonce, next_nonce);
     }
 
     #[test]

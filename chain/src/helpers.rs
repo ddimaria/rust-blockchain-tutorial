@@ -79,10 +79,17 @@ pub mod tests {
             .unwrap();
 
         let value: ethereum_types::U256 = U256::from(1u64);
-        let transaction =
-            Transaction::new(*ACCOUNT_1, Some(*ACCOUNT_2), value, None, None).unwrap();
 
-        blockchain.new_block(vec![transaction], H256::zero());
+        // let transaction = Transaction::new(
+        //     *ACCOUNT_1,
+        //     Some(*ACCOUNT_2),
+        //     value,
+        //     Some(*ACCOUNT_1_NONCE.lock().await),
+        //     None,
+        // )
+        // .unwrap();
+
+        // blockchain.new_block(vec![transaction], H256::zero());
 
         (Arc::new(Mutex::new(blockchain)), *ACCOUNT_1, *ACCOUNT_2)
     }

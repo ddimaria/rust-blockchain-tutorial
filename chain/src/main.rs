@@ -9,6 +9,7 @@ mod account;
 mod blockchain;
 mod error;
 mod helpers;
+mod keys;
 mod logger;
 mod method;
 mod server;

@@ -15,6 +15,7 @@ use tracing_subscriber::{util::SubscriberInitExt, FmtSubscriber};
 use crate::{
     blockchain::BlockChain,
     error::{ChainError, Result},
+    keys::{add_keys, ADDRESS},
     logger::Logger,
     method::*,
 };
@@ -28,6 +29,9 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
     }
 
     FmtSubscriber::builder().finish().try_init()?;
+
+    // generate keys if necessary
+    add_keys()?;
 
     let addrs = addr.parse::<SocketAddr>()?;
     let server = ServerBuilder::default()
@@ -50,7 +54,11 @@ pub(crate) async fn serve(addr: &str, blockchain: Context) -> Result<ServerHandl
 
     let server_handle = server.start(module)?;
 
-    tracing::info!("Starting server on {}", addrs);
+    tracing::info!(
+        "Starting server on {}, with public address {:?}",
+        addrs,
+        *ADDRESS
+    );
 
     // process transactions in a separate thread
     let transaction_processor = task::spawn(async move {

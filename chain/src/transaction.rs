@@ -47,8 +47,9 @@ mod tests {
 
     #[tokio::test]
     async fn sends_a_transaction() {
+        let (blockchain, _, _) = setup().await;
         let mut transaction_storage = TransactionStorage::new();
-        let transaction = new_transaction(Account::random());
+        let transaction = new_transaction(Account::random(), blockchain.clone()).await;
         assert_eq!(transaction_storage.mempool.len(), 0);
 
         transaction_storage.send_transaction(transaction);
@@ -59,7 +60,7 @@ mod tests {
     async fn gets_a_transaction_receipt() {
         let (blockchain, _, _) = setup().await;
         let to = Account::random();
-        let transaction = new_transaction(to);
+        let transaction = new_transaction(to, blockchain.clone()).await;
         let transaction_hash = transaction.hash.unwrap();
 
         blockchain

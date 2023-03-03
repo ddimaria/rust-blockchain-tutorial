@@ -271,17 +271,37 @@ impl BlockChain {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use ethereum_types::U256;
+    use types::account::AccountData;
     use utils::crypto::keypair;
 
     use super::*;
-    use crate::helpers::tests::{setup, ACCOUNT_1, STORAGE};
+    use crate::{
+        helpers::tests::{setup, ACCOUNT_1, STORAGE},
+        transaction,
+    };
 
     pub(crate) fn new_blockchain() -> BlockChain {
         BlockChain::new((*STORAGE).clone()).unwrap()
     }
 
-    pub(crate) fn new_transaction(to: Account) -> Transaction {
-        Transaction::new(*ACCOUNT_1, Some(to), U256::from(10), None, None).unwrap()
+    pub(crate) async fn new_transaction(
+        to: Account,
+        blockchain: Arc<Mutex<BlockChain>>,
+    ) -> Transaction {
+        let nonce = blockchain
+            .lock()
+            .await
+            .accounts
+            .get_account(&ACCOUNT_1)
+            .unwrap_or(AccountData::new(None))
+            .nonce
+            + 1;
+
+        let transaction =
+            Transaction::new(*ACCOUNT_1, Some(to), U256::from(10), Some(nonce), None).unwrap();
+
+        transaction
     }
 
     pub(crate) async fn process_transactions(blockchain: Arc<Mutex<BlockChain>>) {
@@ -302,9 +322,8 @@ pub(crate) mod tests {
             .transactions
             .lock()
             .await
-            .get_transaction_receipt(&transaction_hash);
-
-        assert!(receipt.is_ok());
+            .get_transaction_receipt(&transaction_hash)
+            .unwrap();
     }
 
     pub(crate) async fn get_balance(blockchain: Arc<Mutex<BlockChain>>, account: &Account) -> U256 {
@@ -324,12 +343,16 @@ pub(crate) mod tests {
 
     #[tokio::test]
     async fn creates_and_gets_a_block() {
-        let mut blockchain = new_blockchain();
-        let block_number = blockchain.get_current_block().unwrap().number;
-        let response = blockchain.new_block(vec![new_transaction(Account::random())], H256::zero());
+        let (blockchain, _, _) = setup().await;
+        let block_number = blockchain.lock().await.get_current_block().unwrap().number;
+        let transaction = new_transaction(Account::random(), blockchain.clone()).await;
+        let response = blockchain
+            .lock()
+            .await
+            .new_block(vec![transaction], H256::zero());
         assert!(response.is_ok());
 
-        let new_block_number = blockchain.get_current_block().unwrap().number;
+        let new_block_number = blockchain.lock().await.get_current_block().unwrap().number;
         assert_eq!(new_block_number, block_number + 1);
     }
 
@@ -337,7 +360,7 @@ pub(crate) mod tests {
     async fn sends_a_transaction() {
         let (blockchain, _, _) = setup().await;
         let to = Account::random();
-        let transaction = new_transaction(to);
+        let transaction = new_transaction(to, blockchain.clone()).await;
         let transaction_hash = blockchain
             .lock()
             .await
@@ -356,7 +379,7 @@ pub(crate) mod tests {
         let (blockchain, _, _) = setup().await;
         let to = Account::random();
         let (secret_key, _) = keypair();
-        let transaction = new_transaction(to);
+        let transaction = new_transaction(to, blockchain.clone()).await;
         let signed_transaction = transaction.sign(secret_key).unwrap();
         let encoded = bincode::serialize(&signed_transaction).unwrap();
         let response = blockchain

@@ -34,13 +34,18 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
   - [Transactions](#transactions)
     - [Kinds of Transactions](#kinds-of-transactions)
     - [Transaction Hashes](#transaction-hashes)
-    - [Transaction Signing](#transaction-signing)
   - [Blocks](#blocks)
     - [Genesis Block](#genesis-block)
 - [Basic Cryptography](#basic-cryptography)
   - [Public Key Cryptography](#public-key-cryptography)
   - [Hashing](#hashing)
   - [Address](#address)
+- [Web3 Client - An Introduction](#web3-client---an-introduction)
+- [The Life of a Transaction](#the-life-of-a-transaction)
+  - [Create a Transaction](#create-a-transaction)
+    - [Transaction Signing](#transaction-signing)
+  - [Submitting a Transaction](#submitting-a-transaction)
+  - [Receiving a Transaction](#receiving-a-transaction)
 - [Organization](#organization)
   - [Chain](#chain)
     - [Sample API: eth\_blockNumber](#sample-api-eth_blocknumber)
@@ -140,7 +145,7 @@ pub struct Transaction {
     pub from: Address,
     pub to: Option<Address>,
     pub hash: Option<H256>,
-    pub nonce: U256,
+    pub nonce: Option<U256>,
     pub value: U256,
     pub data: Option<Bytes>,
     pub gas: U256,
@@ -153,7 +158,7 @@ While the `Transaction` data structure has much more fields in Ethereum than sho
 * The `from` portion of a transaction identifies the transaction sender.  This account must already exist on the blockchain.
 * The `to` attribute represents the receiver of the value transferred in a transaction.  It can also be a contract address, where code is executed.  It is optional because it is left empty (or zero or null) to signify a transaction that deploys a contract.
 * A `hash` attribute contains the hash of the transaction.  It's optional so that it can be calculated after the other values in the transaction are populated.
-* The `nonce` is the sender's next account nonce.  It is the existing account nonce incremented by one.  Multiple transactions submitted consecutively must incremented manually as the current account nonce won't change on chain until the transactions are processed.
+* The `nonce` is the sender's next account nonce.  It is the existing account nonce incremented by one.  Leaving this blank will let the blockchain autoincrement on behlaf of the transaction.
 * `value` indicates the amount of `coin` to transfer from the sender to the recipient.  This number can be zero for non-value-transferring transactions.
 * The `data` attribute can hold various pieces of data.  When deploying a contract, it holds bytes of the assembled contract code.  When executing a function on a contract, it holds the function name and parameters.  It can also be any piece of data that the sender wants to include in the transaction.
 * `gas` is the total number of units that the sender is offering to pay for the transaction.  We'll discuss this in more detail later.
@@ -199,50 +204,6 @@ let hash: H256 = hash(&serialized).into();
 ```
 
 We first encode/serialize the transaction and then apply a hashing function.  To keep things simple, we're using [Bincode](https://github.com/bincode-org/bincode) to serialize and compress the data to a binary format throughout this blockchain.  Ethereum uses [RLP Encoding](https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/) for most of it's encoding/serialization.
-
-#### Transaction Signing
-
-Transactions must be signed before they are submitted to the blockchain.
-
-```rust
-fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
-    let encoded = bincode::serialize(&self)?;
-    let recoverable_signature = sign_recovery(&encoded, &key)?;
-    let (_, signature_bytes) = recoverable_signature.serialize_compact();
-    let Signature { v, r, s } = recoverable_signature.into();
-    let transaction_hash = hash(&signature_bytes).into();
-
-    let signed_transaction = SignedTransaction {
-        v,
-        r,
-        s,
-        raw_transaction: encoded.into(),
-        transaction_hash,
-    };
-
-    Ok(signed_transaction)
-}
-```
-
-Signing is done with the account holder's private key in order to generate a recoverable signature of the transaction.  We'll discuss basic cryptography in more detail later, but a recoverable signature is one where a public key can be derived from the signature and message.  This is important as it's how the blockchain validates the transaction.  Once the public key is recovered, it is hashed and must match the `from` address of the transaction.
-
-The resulting `SignedTransaction` data structure is represented as:
-
-```rust
-struct SignedTransaction {
-    v: u64,
-    r: H256,
-    s: H256,
-    raw_transaction: Bytes,
-    transaction_hash: H256,
-}
-```
-
-The `v`, `r`, and `s` values represent the digital signature.  The `v` attribute is the recovery id that is used to derive the account holder's public key.  `r` and `s` hold values related to the signature (`r` is the value and `s` is the proof).
-
-The transaction encoded and compressed and is stored as bytes in the `raw_transaction` attribute.  This minimizes the footprint of the packet.
-
-The `transaction_hash` will be the transaction id in the blockchain.  It serves many purposes, and can be used to validate that the reconstructed transaction wasn't tampered with.
 
 ### Blocks
 
@@ -373,6 +334,261 @@ Outputs:
 
 ```txt
 0x5969c42d7f9ad971cb7fec4299e989cf308ca6f4
+```
+
+## Web3 Client - An Introduction
+
+Ethereum chains expose a [json-rpc](https://www.jsonrpc.org/) interface.  Here's how you get an account's balance:
+
+```shell
+curl -X POST \
+     -H 'Content-Type: application/json' \
+     -d '{"jsonrpc":"2.0","id":"id","method":"eth_getBalance","params":["0xfbb55f17b2926063ae3fa5647c98eb1fac88c99e"]}' \
+     http://127.0.0.1:8545
+```
+
+That returns:
+
+```json
+{
+    "jsonrpc":"2.0",
+    "id":"id",
+    "result":100
+}
+```
+
+That wasn't very hard, but we want to interact with the API in a simpler, more type-safe way.  
+
+Web3 clients are just SDKs that make it easier to interact with a blockchain.  They transform the call above to:
+
+```rust
+let web3 = web3::Web3::new("http://127.0.0.1:8545")?;
+let account: Account = Account::from_str("0xfbb55f17b2926063ae3fa5647c98eb1fac88c99e")?;
+let balance: U256 = web3.get_balance(account).await;
+```
+
+Outputs:
+
+```rust
+Ok(9999870002304000000000)
+```
+
+## The Life of a Transaction
+
+Accounts create and sign transactions.  Transactions combine to from a Block.  Transactions are an essential piece of a blockchain, so let's examine how they are made and what happens to them on the blockchain.
+
+### Create a Transaction
+
+The first step is to create a transaction.
+
+```rust
+impl Transaction {
+    pub fn new(
+        from: Account,
+        to: Option<Account>,
+        value: U256,
+        nonce: U256,
+        data: Option<Bytes>,
+    ) -> Result<Self> {
+        let mut transaction = Self {
+            from,
+            to,
+            value,
+            nonce,
+            hash: None,
+            data,
+            gas: U256::from(10),
+            gas_price: U256::from(10),
+        };
+
+        let serialized = bincode::serialize(&transaction)?;
+        let hash: H256 = hash(&serialized).into();
+        transaction.hash = Some(hash);
+
+        Ok(transaction)
+    }
+}
+
+let from = Account::from_str("0x4a0d457e884ebd9b9773d172ed687417caac4f14")?;
+let to = Account::from_str("0xfbb55f17b2926063ae3fa5647c98eb1fac88c99e")?;
+let transaction = Transaction::new(
+    from,
+    Some(to),
+    U256::from(10),
+    None,
+    None,
+);
+```
+
+In this transaction, we're sending 10 coin from the `0x4a0d457e884ebd9b9773d172ed687417caac4f14` to the `0xfbb55f17b2926063ae3fa5647c98eb1fac88c99e` account.
+
+Now that we have a transaction, let's sign it.
+
+#### Transaction Signing
+
+Transactions must be signed before they are submitted to the blockchain.
+
+```rust
+fn sign(&self, key: SecretKey) -> Result<SignedTransaction> {
+    let encoded = bincode::serialize(&self)?;
+    let recoverable_signature = sign_recovery(&encoded, &key)?;
+    let (_, signature_bytes) = recoverable_signature.serialize_compact();
+    let Signature { v, r, s } = recoverable_signature.into();
+    let transaction_hash = hash(&signature_bytes).into();
+
+    let signed_transaction = SignedTransaction {
+        v,
+        r,
+        s,
+        raw_transaction: encoded.into(),
+        transaction_hash,
+    };
+
+    Ok(signed_transaction)
+}
+```
+
+Signing is done with the account holder's private key in order to generate a recoverable signature of the transaction.  We'll discuss basic cryptography in more detail later, but a recoverable signature is one where a public key can be derived from the signature and message.  This is important as it's how the blockchain validates the transaction.  Once the public key is recovered, it is hashed and must match the `from` address of the transaction.
+
+The resulting `SignedTransaction` data structure is represented as:
+
+```rust
+struct SignedTransaction {
+    v: u64,
+    r: H256,
+    s: H256,
+    raw_transaction: Bytes,
+    transaction_hash: H256,
+}
+```
+
+The `v`, `r`, and `s` values represent the digital signature.  The `v` attribute is the recovery id that is used to derive the account holder's public key.  `r` and `s` hold values related to the signature (`r` is the value and `s` is the proof).
+
+The transaction encoded and compressed and is stored as bytes in the `raw_transaction` attribute.  This minimizes the footprint of the packet.
+
+The `transaction_hash` will be the transaction id in the blockchain.  It serves many purposes, and can be used to validate that the reconstructed transaction wasn't tampered with.
+
+Using the handy web3 client, we can now sign the created transaction:
+
+```rust
+let secret_key;
+let transaction = transaction().await;
+let signed_transaction = web3().sign_transaction(transaction, secret_key);
+```
+
+### Submitting a Transaction
+
+With a newly created transaction that is signed, all that is left is to submit it to the blockchain.
+
+```rust
+let encoded = bincode::serialize(&signed_transaction)?;
+let response = web3().send_raw(encoded.into()).await;
+```
+
+The chain accepts the transaction and responds with a transaction id, which is just the hash of the transaction.  Let's take a look at what happens on the blockchain.
+
+### Receiving a Transaction
+
+The chain receives the raw transaction from the json-rpc API:
+
+```rust
+fn eth_send_raw_transaction(module: &mut RpcModule<Context>) -> Result<()> {
+    module.register_async_method(
+        "eth_sendRawTransaction",
+        move |params, blockchain| async move {
+            let raw_transaction = params.one::<Bytes>()?;
+            let transaction_hash = blockchain
+                .lock()
+                .await
+                .send_raw_transaction(raw_transaction)
+                .await
+                .map_err(|e| Error::Custom(e.to_string()))?;
+
+            Ok(transaction_hash)
+        },
+    )?;
+
+    Ok(())
+}
+```
+
+This function registers the `eth_sendRawTransaction` method, followed by a closure that handles the incomming request.  Now that we have the raw transaction bytes, let's take a peek at the `send_raw_transaction()` function.
+
+```rust
+async fn send_raw_transaction(&mut self, transaction: Bytes) -> Result<H256> {
+    let signed_transaction: SignedTransaction = bincode::deserialize(&transaction)?;
+    let transaction: Transaction = signed_transaction.clone().try_into()?;
+    let transaction_hash = transaction.transaction_hash()?;
+
+    Transaction::verify(signed_transaction, transaction.from).map_err(|e| {
+        ChainError::TransactionNotVerified(format!("{}: {}", transaction_hash, e))
+    })?;
+
+    self.send_transaction(transaction.into()).await
+}
+```
+
+The chain first deserializes the raw bytes into a `SignedTransaction` struct.  To recap, that struct is:
+
+```rust
+struct SignedTransaction {
+    v: u64,
+    r: H256,
+    s: H256,
+    raw_transaction: Bytes,
+    transaction_hash: H256,
+}
+```
+
+With a signed transaction in place, we can now verify that the transaction is properly signed.
+
+```rust
+pub fn verify(signed_transaction: SignedTransaction, address: Address) -> Result<bool> {
+    let (message, recovery_id, signature_bytes) = Transaction::recover_pieces(signed_transaction)?;
+    let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32())?;
+    let verified = verify(&message, &signature_bytes, &key)?;
+    let addresses_match = address == public_key_address(&key);
+
+    Ok(verified && addresses_match)
+}
+
+fn recover_pieces(signed_transaction: SignedTransaction) -> Result<(Vec<u8>, RecoveryId, [u8; 64])> {
+    let message = signed_transaction.raw_transaction.to_owned();
+    let signature: Signature = signed_transaction.into();
+    let recoverable_signature: RecoverableSignature = signature.try_into()?;
+    let (recovery_id, signature_bytes) = recoverable_signature.serialize_compact();
+
+    Ok((message.to_vec(), recovery_id, signature_bytes))
+}
+```
+
+We get the message, the recovery id, and the signature bytes from the signed transaction.  We can then use those pieces to recover the public key.  We then verify the `signature` is a valid ECDSA signature for `message` using the public key. We now invoke the companion `verify()` function in the crypto utility:
+
+```rust
+fn verify(message: &[u8], signature: &[u8], key: &PublicKey) -> Result<bool> {
+    let message = hash_message(message)?;
+    let signature = EcdsaSignature::from_compact(signature)
+        .map_err(|e| UtilsError::VerifyError(e.to_string()))?;
+
+    Ok(CONTEXT.verify_ecdsa(&message, &signature, key).is_ok())
+}
+```
+
+We can also verify that the public key address matches the `from` attribute of a transaction, which completes the transaction verification process.  Now we can safely add the transaction to the mempool:
+
+```rust
+async fn send_transaction(
+    &mut self,
+    transaction_request: TransactionRequest,
+) -> Result<H256> {
+    let transaction: Transaction = transaction_request.try_into()?;
+    let hash = transaction.transaction_hash()?;
+
+    // add to the transaction mempool
+    self.transactions.lock().await.send_transaction(transaction);
+
+    Ok(hash)
+}
 ```
 
 ## Organization

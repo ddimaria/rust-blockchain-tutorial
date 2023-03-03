@@ -16,7 +16,7 @@ use tracing_subscriber::{
 };
 use types::error::TypeError;
 
-#[derive(Error, Debug, Serialize, Deserialize)]
+#[derive(Error, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ChainError {
     #[error("Error parsing address {0}")]
     AddrParseError(String),
@@ -47,6 +47,12 @@ pub enum ChainError {
 
     #[error("Parent hash is missing: {0}")]
     MissingHash(String),
+
+    #[error("Nonce {0} too high for account {1}")]
+    NonceTooHigh(String, String),
+
+    #[error("Nonce {0} too low for account {1}")]
+    NonceTooLow(String, String),
 
     #[error("Could not serialize: {0}")]
     SerializeError(String),

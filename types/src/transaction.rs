@@ -31,7 +31,7 @@ pub struct Transaction {
     pub to: Option<Address>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hash: Option<H256>,
-    pub nonce: U256,
+    pub nonce: Option<U256>,
     pub value: U256,
     pub data: Option<Bytes>,
     pub gas: U256,
@@ -53,7 +53,7 @@ impl Transaction {
         from: Account,
         to: Option<Account>,
         value: U256,
-        nonce: U256,
+        nonce: Option<U256>,
         data: Option<Bytes>,
     ) -> Result<Self> {
         let mut transaction = Self {
@@ -67,11 +67,17 @@ impl Transaction {
             gas_price: U256::from(10),
         };
 
-        let serialized = bincode::serialize(&transaction)?;
-        let hash: H256 = hash(&serialized).into();
-        transaction.hash = Some(hash);
+        transaction.hash()?;
 
         Ok(transaction)
+    }
+
+    pub fn hash(&mut self) -> Result<H256> {
+        let serialized = bincode::serialize(&self)?;
+        let hash: H256 = hash(&serialized).into();
+        self.hash = Some(hash);
+
+        self.transaction_hash()
     }
 
     pub fn transaction_hash(&self) -> Result<H256> {
@@ -105,12 +111,13 @@ impl Transaction {
         Ok(signed_transaction)
     }
 
-    pub fn verify(signed_transaction: SignedTransaction) -> Result<bool> {
+    pub fn verify(signed_transaction: SignedTransaction, address: Address) -> Result<bool> {
         let (message, recovery_id, signature_bytes) = Self::recover_pieces(signed_transaction)?;
         let key = recover_public_key(&message, &signature_bytes, recovery_id.to_i32())?;
         let verified = verify(&message, &signature_bytes, &key)?;
+        let addresses_match = address == public_key_address(&key);
 
-        Ok(verified)
+        Ok(verified && addresses_match)
     }
 
     pub fn recover_address(signed_transaction: SignedTransaction) -> Result<H160> {
@@ -202,6 +209,8 @@ pub struct TransactionRequest {
     pub to: Option<Address>,
     pub value: Option<U256>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r: Option<U256>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s: Option<U256>,
@@ -216,9 +225,20 @@ impl From<Transaction> for TransactionRequest {
             data: value.data,
             gas: value.gas,
             gas_price: value.gas_price,
+            nonce: value.nonce,
             r: None,
             s: None,
         }
+    }
+}
+
+impl TryInto<Transaction> for TransactionRequest {
+    type Error = TypeError;
+
+    fn try_into(self) -> Result<Transaction> {
+        let value = self.value.unwrap_or(U256::zero());
+        let from = self.from.unwrap_or(H160::zero());
+        Transaction::new(from, self.to, value, self.nonce, self.data)
     }
 }
 
@@ -259,7 +279,7 @@ mod tests {
         let to = H160::from_str("0x6b78fa07883d5c5b527da9828ac77f5aa5a61d3b").unwrap();
         let value = U256::from(1u64);
 
-        Transaction::new(from, Some(to), value, U256::zero(), None).unwrap()
+        Transaction::new(from, Some(to), value, None, None).unwrap()
     }
 
     #[test]
@@ -273,12 +293,23 @@ mod tests {
     }
 
     #[test]
+    fn it_verifies_a_signed_transaction() {
+        let (secret_key, public_key) = keypair();
+        let mut transaction = new_transaction();
+        transaction.from = public_key_address(&public_key);
+        let signed = transaction.sign(secret_key).unwrap();
+        let verifies = Transaction::verify(signed, transaction.from).unwrap();
+
+        assert!(verifies);
+    }
+
+    #[test]
     fn root_hash() {
         let transaction_1 = new_transaction();
         let transaction_2 = new_transaction();
         let root = Transaction::root_hash(&vec![transaction_1, transaction_2]).unwrap();
         let expected =
-            H256::from_str("0x637fbee17e66aa4afb552b6a21c7695e2b5e44bf3f658b18b928170cc051bdf6")
+            H256::from_str("0xa3b8c35bab6501806ed681220afe26a0d46774a6aa56d044b0f6aef0f3f0d682")
                 .unwrap();
         assert_eq!(root, expected);
     }

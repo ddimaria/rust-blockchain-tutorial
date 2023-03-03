@@ -123,7 +123,7 @@ impl Web3 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::helpers::tests::{web3, ACCOUNT_1, ACCOUNT_2};
+    use crate::helpers::tests::{web3, ACCOUNT_1, ACCOUNT_1_NONCE, ACCOUNT_2};
     use ethereum_types::U256;
     use std::time::Duration;
     use tokio::time::sleep;
@@ -131,11 +131,13 @@ pub mod tests {
     use utils::crypto::keypair;
 
     async fn transaction() -> Transaction {
+        let nonce = *ACCOUNT_1_NONCE.lock().await + U256::from(1);
+        *ACCOUNT_1_NONCE.lock().await = nonce;
         Transaction::new(
             *ACCOUNT_1,
             Some(*ACCOUNT_2),
             U256::from(10),
-            U256::zero(),
+            Some(nonce),
             None,
         )
         .unwrap()
@@ -155,9 +157,10 @@ pub mod tests {
     #[tokio::test]
     async fn it_gets_a_transaction_receipt() {
         let tx_hash = send_transaction().await.unwrap();
+        println!("{:?}", tx_hash);
 
         // TODO(ddimaria): use polling or callbacks instead of waiting
-        sleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(2000)).await;
 
         let response = web3().transaction_receipt(tx_hash).await;
         assert!(response.is_ok());

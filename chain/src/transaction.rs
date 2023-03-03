@@ -39,11 +39,10 @@ impl TransactionStorage {
 
 #[cfg(test)]
 mod tests {
-    use crate::blockchain::tests::{assert_receipt, new_blockchain, new_transaction};
+    use crate::blockchain::tests::{assert_receipt, new_transaction};
+    use crate::helpers::tests::setup;
 
     use super::*;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
     use types::account::Account;
 
     #[tokio::test]
@@ -58,17 +57,19 @@ mod tests {
 
     #[tokio::test]
     async fn gets_a_transaction_receipt() {
-        let blockchain = new_blockchain();
+        let (blockchain, _, _) = setup().await;
         let to = Account::random();
         let transaction = new_transaction(to);
         let transaction_hash = transaction.hash.unwrap();
 
         blockchain
+            .lock()
+            .await
             .transactions
             .lock()
             .await
             .send_transaction(transaction);
 
-        assert_receipt(Arc::new(Mutex::new(blockchain)), transaction_hash).await;
+        assert_receipt(blockchain, transaction_hash).await;
     }
 }

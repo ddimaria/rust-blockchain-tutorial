@@ -12,7 +12,7 @@ use crate::error::{ChainError, Result};
 use crate::storage::Storage;
 use crate::transaction::TransactionStorage;
 use crate::world_state::WorldState;
-use ethereum_types::{H160, H256, U256, U64};
+use ethereum_types::{H256, U256, U64};
 use tokio::sync::Mutex;
 use types::account::Account;
 use types::block::{Block, BlockNumber};
@@ -20,7 +20,6 @@ use types::bytes::Bytes;
 use types::transaction::{
     SignedTransaction, Transaction, TransactionKind, TransactionReceipt, TransactionRequest,
 };
-use utils::{Digest, Keccak256};
 
 // TODO(ddimaria): store blocks in a patricia merkle trie
 #[derive(Debug)]
@@ -75,7 +74,6 @@ impl BlockChain {
         transactions: Vec<Transaction>,
         state_trie: H256,
     ) -> Result<Block> {
-        // TODO(ddimaria): make this an atomic operation
         let current_block = self.get_current_block()?;
         let number = current_block.number + 1_u64;
         let parent_hash = current_block.block_hash()?;
@@ -86,44 +84,39 @@ impl BlockChain {
         self.get_block_by_number(number)
     }
 
-    // TODO(ddimaria): remove auto nonce incrementing and rely on clients to increment
     pub(crate) async fn send_transaction(
         &mut self,
         transaction_request: TransactionRequest,
     ) -> Result<H256> {
-        let value = transaction_request.value.unwrap_or(U256::zero());
-        let from = transaction_request.from.unwrap_or(H160::zero());
-        let to = transaction_request.to;
-        let nonce = self.accounts.increment_nonce(&from)?.into();
+        let mut transaction: Transaction = transaction_request.try_into()?;
+        let account = self.accounts.get_account(&transaction.from)?;
+        let nonce = transaction
+            .nonce
+            .unwrap_or_else(|| U256::from(account.nonce + 1_u64));
 
-        let transaction: Transaction =
-            Transaction::new(from, to, value, nonce, transaction_request.data)?;
-        let hash = transaction.transaction_hash()?;
+        transaction.nonce = Some(nonce);
+
+        // regenerate the transaction hash with the nonce in place
+        let transaction_hash = transaction.hash()?;
 
         // add to the transaction mempool
         self.transactions.lock().await.send_transaction(transaction);
 
-        Ok(hash)
+        Ok(transaction_hash)
     }
 
     pub(crate) async fn send_raw_transaction(&mut self, transaction: Bytes) -> Result<H256> {
         let signed_transaction: SignedTransaction = bincode::deserialize(&transaction)?;
+        let transaction: Transaction = signed_transaction.clone().try_into()?;
+        let transaction_hash = transaction.transaction_hash()?;
 
-        let verified = Transaction::verify(signed_transaction.clone())
-            .map_err(|e| ChainError::TransactionNotVerified(e.to_string()))?;
-
-        if !verified {
-            return Err(ChainError::TransactionNotVerified(
-                signed_transaction.transaction_hash.to_string(),
-            ));
-        }
-
-        let transaction: Transaction = signed_transaction.try_into()?;
+        Transaction::verify(signed_transaction, transaction.from).map_err(|e| {
+            ChainError::TransactionNotVerified(format!("{}: {}", transaction_hash, e))
+        })?;
 
         self.send_transaction(transaction.into()).await
     }
 
-    // TODO(ddimaria): handle TransactionKind::ContractExecution
     pub(crate) async fn process_transactions(&mut self) -> Result<()> {
         // Bulk drain the current queue to fit into the new block
         // This is not safe as we lose transactions if a panic occurs
@@ -140,46 +133,37 @@ impl BlockChain {
             let mut receipts: Vec<TransactionReceipt> = vec![];
             let mut processed: Vec<Transaction> = vec![];
 
-            tracing::info!(
-                "Processing {} transactions for new block",
-                transactions.len()
-            );
+            tracing::info!("Processing {} transactions", transactions.len());
 
-            for transaction in transactions.into_iter() {
-                tracing::info!("Processing Transaction {:?}", transaction.hash);
-
-                let transaction_hash = transaction.transaction_hash()?;
-                let value = transaction.value;
-                let mut contract_address: Option<Account> = None;
-
-                // create the `to` account if it doesn't exist
-                if let Some(to) = transaction.to {
-                    self.accounts.add_empty_account(&to)?;
+            for mut transaction in transactions.into_iter() {
+                match self.process_transaction(&mut transaction) {
+                    Ok((transaction, transaction_receipt)) => {
+                        receipts.push(transaction_receipt);
+                        processed.push(transaction.to_owned());
+                    }
+                    Err(error) => {
+                        match error {
+                            // The nonce is too high, add back to the mempool
+                            ChainError::NonceTooHigh(_, _) => {
+                                tracing::warn!(
+                                    "Could not process transaction {:?}: {}",
+                                    transaction,
+                                    error
+                                );
+                                self.transactions
+                                    .lock()
+                                    .await
+                                    .mempool
+                                    .push_back(transaction);
+                            }
+                            _ => tracing::error!(
+                                "Could not process transaction {:?}: {}",
+                                transaction,
+                                error
+                            ),
+                        }
+                    }
                 }
-
-                // TODO(ddimaria): remove this copy
-                let kind = transaction.to_owned().kind()?;
-
-                match kind {
-                    TransactionKind::Regular(from, to) => self.accounts.transfer(&from, &to, value),
-                    TransactionKind::ContractDeployment(from, data) => {
-                        contract_address = self.accounts.add_contract_account(&from, data).ok();
-                        Ok(())
-                    }
-                    TransactionKind::ContractExecution(_from, _to, _data) => {
-                        unimplemented!()
-                    }
-                }?;
-
-                let transaction_receipt = TransactionReceipt {
-                    block_hash: None,
-                    block_number: None,
-                    contract_address,
-                    transaction_hash,
-                };
-
-                receipts.push(transaction_receipt);
-                processed.push(transaction);
             }
 
             // update world state
@@ -222,6 +206,50 @@ impl BlockChain {
         Ok(())
     }
 
+    // TODO(ddimaria): handle TransactionKind::ContractExecution
+    pub(crate) fn process_transaction<'a>(
+        &mut self,
+        transaction: &'a mut Transaction,
+    ) -> Result<(&'a mut Transaction, TransactionReceipt)> {
+        let value = transaction.value;
+        let mut contract_address: Option<Account> = None;
+        let transaction_hash = transaction.transaction_hash()?;
+        let nonce = transaction.nonce.unwrap();
+
+        tracing::info!("Processing Transaction {:?}", transaction_hash);
+
+        // create the `to` account if it doesn't exist
+        if let Some(to) = transaction.to {
+            self.accounts.add_empty_account(&to)?;
+        }
+
+        // TODO(ddimaria): remove this copy
+        let kind = transaction.to_owned().kind()?;
+
+        match kind {
+            TransactionKind::Regular(from, to) => self.accounts.transfer(&from, &to, value),
+            TransactionKind::ContractDeployment(from, data) => {
+                contract_address = self.accounts.add_contract_account(&from, data).ok();
+                Ok(())
+            }
+            TransactionKind::ContractExecution(_from, _to, _data) => {
+                unimplemented!()
+            }
+        }?;
+
+        // update the nonce
+        self.accounts.update_nonce(&transaction.from, nonce)?;
+
+        let transaction_receipt = TransactionReceipt {
+            block_hash: None,
+            block_number: None,
+            contract_address,
+            transaction_hash,
+        };
+
+        Ok((transaction, transaction_receipt))
+    }
+
     pub(crate) async fn get_transaction_receipt(
         &mut self,
         transaction_hash: H256,
@@ -248,7 +276,7 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn new_transaction(to: Account) -> Transaction {
-        Transaction::new(*ACCOUNT_1, Some(to), U256::from(10), U256::zero(), None).unwrap()
+        Transaction::new(*ACCOUNT_1, Some(to), U256::from(10), None, None).unwrap()
     }
 
     pub(crate) async fn process_transactions(blockchain: Arc<Mutex<BlockChain>>) {

@@ -80,7 +80,7 @@ pub mod tests {
 
         let value: ethereum_types::U256 = U256::from(1u64);
         let transaction =
-            Transaction::new(*ACCOUNT_1, Some(*ACCOUNT_2), value, U256::zero(), None).unwrap();
+            Transaction::new(*ACCOUNT_1, Some(*ACCOUNT_2), value, None, None).unwrap();
 
         blockchain.new_block(vec![transaction], H256::zero());
 

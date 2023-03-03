@@ -78,7 +78,7 @@ mod tests {
     #[tokio::test]
     async fn it_gets_the_latest_block() {
         let block_number = web3().get_block_number().await.unwrap();
-        let response = web3().get_block(*block_number).await.unwrap();
-        // assert!(response.is_ok());
+        let response = web3().get_block(*block_number).await;
+        assert!(response.is_ok());
     }
 }

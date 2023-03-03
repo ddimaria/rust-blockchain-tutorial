@@ -70,8 +70,9 @@ pub(crate) fn eth_get_transaction_count(module: &mut RpcModule<Context>) -> Resu
             .lock()
             .await
             .accounts
-            .get_nonce(&account)
-            .map_err(|e| Error::Custom(e.to_string()))?;
+            .get_account(&account)
+            .map_err(|e| Error::Custom(e.to_string()))?
+            .nonce;
 
         Ok(to_hex(count))
     })?;

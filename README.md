@@ -60,6 +60,7 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
   - [Contracts](#contracts)
     - [WIT](#wit)
     - [Sample Contract - Erc20](#sample-contract---erc20)
+  - [Invoking a Contract Function](#invoking-a-contract-function)
   - [Web3](#web3)
     - [Sample Usage](#sample-usage)
   - [Types](#types)
@@ -849,7 +850,7 @@ use wit_bindgen_guest_rust::*;
 
 wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
 
-struct Erc20 {}
+struct Erc20;
 
 export_contract!(Erc20);
 
@@ -866,6 +867,33 @@ impl erc20::Erc20 for Erc20 {
         println!("to {}, amount", amount);
     }
 }
+```
+
+### Invoking a Contract Function
+
+The `call_function!` macro invokes contract function calls with variable arguments:
+
+```rust
+macro_rules! call_function {
+    ($contract: ident, $function: ident, $($args:tt),*) => {{
+        let bytes = include_bytes!(concat!(
+            "./../../target/wasm32-unknown-unknown/release/",
+            stringify!($contract),
+            "_wit.wasm"
+        ));
+        paste!{
+            if let Ok((mut store, contract)) = load_contract(bytes) {
+                [contract. $contract . $function(&mut store, $($args),*)];
+            };
+        }
+    }};
+}
+```
+
+For example, to invoke the `mint` function on the `erc20` contract:
+
+```rust
+call_function!(erc20, mint, address, 10);
 ```
 
 ### Web3

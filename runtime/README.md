@@ -31,5 +31,6 @@ macro_rules! call_function {
 For example, to invoke the `mint` function on the `erc20` contract:
 
 ```rust
+let address = H160::from_str("0x5969c42d7f9ad971cb7fec4299e989cf308ca6f4")?;
 call_function!(erc20, mint, address, 10);
 ```

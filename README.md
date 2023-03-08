@@ -60,7 +60,7 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
   - [Contracts](#contracts)
     - [WIT](#wit)
     - [Sample Contract - Erc20](#sample-contract---erc20)
-  - [Invoking a Contract Function](#invoking-a-contract-function)
+    - [Invoking a Contract Function](#invoking-a-contract-function)
   - [Web3](#web3)
     - [Sample Usage](#sample-usage)
   - [Types](#types)
@@ -869,7 +869,7 @@ impl erc20::Erc20 for Erc20 {
 }
 ```
 
-### Invoking a Contract Function
+#### Invoking a Contract Function
 
 The `call_function!` macro invokes contract function calls with variable arguments:
 
@@ -893,6 +893,7 @@ macro_rules! call_function {
 For example, to invoke the `mint` function on the `erc20` contract:
 
 ```rust
+let address = H160::from_str("0x5969c42d7f9ad971cb7fec4299e989cf308ca6f4")?;
 call_function!(erc20, mint, address, 10);
 ```
 

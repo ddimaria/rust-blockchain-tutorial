@@ -1,9 +1,17 @@
 #![allow(unused)]
+use std::collections::HashMap;
+
 use wit_bindgen_guest_rust::*;
 
 wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
 
-struct Erc20 {}
+pub struct Erc20;
+
+pub struct State {
+    name: String,
+    symbol: String,
+    balances: HashMap<String, u64>,
+}
 
 export_contract!(Erc20);
 

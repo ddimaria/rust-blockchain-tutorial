@@ -1,5 +1,8 @@
 #![allow(unused)]
 use crate::error::Result;
+use paste::paste;
+use std::collections::HashMap;
+use types::account::Account;
 use wasmtime::{
     self,
     component::{Component, Linker},
@@ -9,27 +12,19 @@ use wit_component::ComponentEncoder;
 
 wasmtime::component::bindgen!({ path: "../contracts/erc20/erc20.wit", world: "erc20" });
 
-fn construct(bytes: &[u8], name: &str, symbol: &str) -> Result<()> {
-    let (mut store, contract) = load_contract(bytes)?;
-    // preserve for how to retrieve data from functions
-    // let res = contract.erc20.construct(&mut store, name, symbol)?;
-    contract.erc20.construct(&mut store, name, symbol)?;
-
-    Ok(())
-}
-
-fn mint(bytes: &[u8], account: &str, amount: u64) -> Result<()> {
-    let (mut store, contract) = load_contract(bytes)?;
-    contract.erc20.mint(&mut store, account, amount)?;
-
-    Ok(())
-}
-
-fn transfer(bytes: &[u8], to: &str, amount: u64) -> Result<()> {
-    let (mut store, contract) = load_contract(bytes)?;
-    contract.erc20.transfer(&mut store, to, amount)?;
-
-    Ok(())
+macro_rules! call_function {
+    ($contract: ident, $function: ident, $($args:tt),*) => {{
+        let bytes = include_bytes!(concat!(
+            "./../../target/wasm32-unknown-unknown/release/",
+            stringify!($contract),
+            "_wit.wasm"
+        ));
+        paste!{
+            if let Ok((mut store, contract)) = load_contract(bytes) {
+                [contract. $contract . $function(&mut store, $($args),*)];
+            };
+        }
+    }};
 }
 
 fn load_contract(bytes: &[u8]) -> Result<(Store<i32>, Contract)> {
@@ -58,12 +53,9 @@ mod tests {
     use types::account::Account;
 
     #[test_log::test]
-    fn it_mints() {
-        mint(
-            include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm"),
-            &Account::random().to_string(),
-            100 as u64,
-        )
-        .unwrap();
+    fn it_calls_a_contract_function() {
+        let address = &Account::random().to_string();
+        call_function!(erc20, construct, "Rust Coin", "RustCoin");
+        call_function!(erc20, mint, address, 10);
     }
 }

@@ -1,2 +1,2 @@
-pub mod erc20;
+pub mod contract;
 pub mod error;

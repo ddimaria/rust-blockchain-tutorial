@@ -123,22 +123,35 @@ impl Web3 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::helpers::tests::{web3, ACCOUNT_1, ACCOUNT_1_NONCE, ACCOUNT_2};
+    use crate::helpers::tests::{
+        deploy_contract, increment_account_1_nonce, web3, ACCOUNT_1, ACCOUNT_1_NONCE, ACCOUNT_2,
+    };
     use ethereum_types::U256;
     use std::time::Duration;
     use tokio::time::sleep;
-    use types::transaction::Transaction;
+    use types::{account::Account, transaction::Transaction};
     use utils::crypto::keypair;
 
     async fn transaction() -> Transaction {
-        let nonce = *ACCOUNT_1_NONCE.lock().await + U256::from(1);
-        *ACCOUNT_1_NONCE.lock().await = nonce;
+        let nonce = increment_account_1_nonce().await;
         Transaction::new(
             *ACCOUNT_1,
             Some(*ACCOUNT_2),
             U256::from(10),
             Some(nonce),
             None,
+        )
+        .unwrap()
+    }
+
+    async fn function_call_transaction(contract_account: Account, data: Bytes) -> Transaction {
+        let nonce = increment_account_1_nonce().await;
+        Transaction::new(
+            *ACCOUNT_1,
+            Some(contract_account),
+            U256::from(10),
+            Some(nonce),
+            Some(data),
         )
         .unwrap()
     }
@@ -157,7 +170,6 @@ pub mod tests {
     #[tokio::test]
     async fn it_gets_a_transaction_receipt() {
         let tx_hash = send_transaction().await.unwrap();
-        println!("{:?}", tx_hash);
 
         // TODO(ddimaria): use polling or callbacks instead of waiting
         sleep(Duration::from_millis(2000)).await;
@@ -167,9 +179,31 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn it_sends_a_raw_transaction() {
+    async fn it_sends_a_raw_transfer_transaction() {
         let (secret_key, _) = keypair();
         let transaction = transaction().await;
+        let signed_transaction = web3().sign_transaction(transaction, secret_key).unwrap();
+        let encoded = bincode::serialize(&signed_transaction).unwrap();
+        let response = web3().send_raw(encoded.into()).await;
+        assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn it_sends_a_raw_contract_call_transaction() {
+        let (secret_key, _) = keypair();
+        let tx_hash = deploy_contract(false).await;
+
+        // TODO(ddimaria): use polling or callbacks instead of waiting
+        sleep(Duration::from_millis(1000)).await;
+
+        let receipt = web3().transaction_receipt(tx_hash).await.unwrap();
+        let contract_address = receipt.contract_address.unwrap();
+        let function_call = bincode::serialize(&(
+            "construct",
+            vec!["String", "Rust Coin 1", "String", "RustCoin1"],
+        ))
+        .unwrap();
+        let transaction = function_call_transaction(contract_address, function_call.into()).await;
         let signed_transaction = web3().sign_transaction(transaction, secret_key).unwrap();
         let encoded = bincode::serialize(&signed_transaction).unwrap();
         let response = web3().send_raw(encoded.into()).await;

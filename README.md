@@ -60,6 +60,7 @@ This repo is designed to train Rust developers on intermediate and advanced Rust
   - [Contracts](#contracts)
     - [WIT](#wit)
     - [Sample Contract - Erc20](#sample-contract---erc20)
+    - [Invoking a Contract Function](#invoking-a-contract-function)
   - [Web3](#web3)
     - [Sample Usage](#sample-usage)
   - [Types](#types)
@@ -735,8 +736,17 @@ fn process_transaction<'a>(
                 contract_address = self.accounts.add_contract_account(&from, data).ok();
                 Ok(())
             }
-            TransactionKind::ContractExecution(_from, _to, _data) => {
-                unimplemented!()
+            TransactionKind::ContractExecution(_from, to, data) => {
+                let code = self
+                    .accounts
+                    .get_account(&to)?
+                    .code_hash
+                    .ok_or_else(|| ChainError::NotAContractAccount(to.to_string()))?;
+                let (function, params): (&str, Vec<&str>) = bincode::deserialize(&data)?;
+
+                // call the function in the contract
+                runtime::contract::call_function(&code, function, &params)
+                    .map_err(|e| ChainError::RuntimeError(to.to_string(), e.to_string()))
             }
         }?;
 
@@ -777,9 +787,43 @@ pub fn add_contract_account(&mut self, key: &Account, data: Bytes) -> Result<Acc
 
 Code received gets added to the `to` account's `code_hash` attribute.
 
-_TODO: document processing a contract execution_
+Contract execution involves calling a function in the contract in a WASM virtual machine (Wasmtime).  This sandboxing isolates contract execution from the rest of the blockchain.  We first must get the executable code from account storage:
 
-After the transaction is processed, the `from` account's `nonce` is updated.  A `transaction receipt` is created and returned from the function.
+```rust
+let code = self
+    .accounts
+    .get_account(&to)?
+    .code_hash
+    .ok_or_else(|| ChainError::NotAContractAccount(to.to_string()))?;
+```
+
+Now we just extract the function name and the function parameters from the `data` node in the transaction request:
+
+```rust 
+let (function, params): (&str, Vec<&str>) = bincode::deserialize(&data)?;
+```
+
+For example, let's say we want to invoke the `construct` function.  The function signature of `construct` contract function is:
+
+```rust
+fn construct(name: String, symbol: String) {}
+```
+
+We serialize the parameter types and values:
+
+
+```rust
+// ["Param 1 Type", "Param 1 Value", "Param 2 Type", "Param 2 Value"]
+let params = ["String", "Rust Coin", "String", "RustCoin"];
+```
+
+We can now invoke the `construct` function:
+
+```rust
+runtime::contract::call_function(&code, "construct", &params)?;
+```
+
+After we've handled one of the 3 transaction types, the `from` account's `nonce` is updated.  A `transaction receipt` is created and returned from the function.
 
 ## Organization
 
@@ -849,7 +893,7 @@ use wit_bindgen_guest_rust::*;
 
 wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
 
-struct Erc20 {}
+struct Erc20;
 
 export_contract!(Erc20);
 
@@ -866,6 +910,19 @@ impl erc20::Erc20 for Erc20 {
         println!("to {}, amount", amount);
     }
 }
+```
+
+#### Invoking a Contract Function
+
+This code can convert the textual representation of a contract function call to a function call within the wasmtime runtime.
+Parameters are listed in pairs of parameter type and paramater value.
+
+```rust
+let bytes = include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm");
+let function_name = "construct";
+let params = &["String", "Rust Coin", "String", "RustCoin"];
+
+call_function(bytes, function_name, params)?;
 ```
 
 ### Web3
@@ -887,7 +944,7 @@ let block_number = web3.get_block_number().await?;
 let block = web3.get_block(*block_number).await?;
 
 let contract =
-    include_bytes!("./../../contracts/artifacts/contracts/ERC20.sol/RustCoinToken.json").to_vec();
+    include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm").to_vec();
 let tx_hash = web3.deploy(all_accounts[0], &contract).await?;
 let receipt = web3.transaction_receipt(tx_hash).await?;
 let code = web3.code(receipt.contract_address.unwrap(), None).await?;

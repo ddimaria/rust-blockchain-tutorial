@@ -9,7 +9,7 @@ pub(crate) mod tests {
     use std::str::FromStr;
 
     use crate::Web3;
-    use ethereum_types::{H160, U256};
+    use ethereum_types::{H160, H256, U256};
     use lazy_static::lazy_static;
     use tokio::sync::Mutex;
     use types::account::Account;
@@ -27,5 +27,23 @@ pub(crate) mod tests {
 
     pub fn get_contract() -> Vec<u8> {
         include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm").to_vec()
+    }
+
+    pub async fn increment_account_1_nonce() -> U256 {
+        let nonce = *ACCOUNT_1_NONCE.lock().await + U256::from(1);
+        *ACCOUNT_1_NONCE.lock().await = nonce;
+        nonce
+    }
+
+    pub async fn deploy_contract(simple: bool) -> H256 {
+        let web3 = web3();
+        let from = *ACCOUNT_1;
+        let nonce = increment_account_1_nonce().await;
+        let data = if simple {
+            [0, 1].to_vec()
+        } else {
+            get_contract()
+        };
+        web3.deploy(from, &data, Some(nonce)).await.unwrap()
     }
 }

@@ -57,6 +57,12 @@ pub enum ChainError {
     #[error("Nonce {0} too low for account {1}")]
     NonceTooLow(String, String),
 
+    #[error("Account {0} is not a contract account")]
+    NotAContractAccount(String),
+
+    #[error("Error executing contract at address {0}: {1}")]
+    RuntimeError(String, String),
+
     #[error("Could not serialize: {0}")]
     SerializeError(String),
 

@@ -1,7 +1,0 @@
-default world contract {
-  export erc20: interface {
-    construct: func(name: string, symbol: string)
-    mint: func(account: string, amount: u64)
-    transfer: func(to: string, amount: u64)
-  }
-}

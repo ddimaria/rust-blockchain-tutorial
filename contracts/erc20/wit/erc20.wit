@@ -1,0 +1,5 @@
+default world contract {
+  export construct: func(name: string, symbol: string)
+  export mint: func(account: string, amount: u64)
+  export transfer: func(to: string, amount: u64)
+}

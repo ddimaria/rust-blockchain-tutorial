@@ -1,9 +1,7 @@
 #![allow(unused)]
 use std::collections::HashMap;
 
-use wit_bindgen_guest_rust::*;
-
-wit_bindgen_guest_rust::generate!({path: "../erc20/erc20.wit", world: "erc20"});
+wit_bindgen::generate!("erc20");
 
 pub struct Erc20;
 
@@ -15,7 +13,7 @@ pub struct State {
 
 export_contract!(Erc20);
 
-impl erc20::Erc20 for Erc20 {
+impl Contract for Erc20 {
     fn construct(name: String, symbol: String) {
         println!("name {}, symbol", symbol);
     }

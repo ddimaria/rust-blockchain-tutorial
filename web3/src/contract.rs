@@ -29,7 +29,12 @@ impl Web3 {
     /// let tx_hash = web3.deploy(account, &contract).await;
     /// assert!(tx_hash.is_ok());
     /// ```
-    pub async fn deploy<'a>(&self, owner: Address, abi: &'a [u8]) -> Result<H256> {
+    pub async fn deploy<'a>(
+        &self,
+        owner: Address,
+        abi: &'a [u8],
+        nonce: Option<U256>,
+    ) -> Result<H256> {
         let gas = U256::from(1_000_000);
         let gas_price = U256::from(1_000_000);
         let data: Bytes = abi.to_vec().into();
@@ -40,7 +45,7 @@ impl Web3 {
             gas,
             gas_price,
             data: Some(data),
-            nonce: None,
+            nonce,
             r: None,
             s: None,
         };
@@ -78,31 +83,19 @@ impl Web3 {
 
 #[cfg(test)]
 mod tests {
+    use crate::helpers::tests::{deploy_contract, web3};
     use std::time::Duration;
-
     use tokio::time::sleep;
-
-    use super::*;
-    use crate::helpers::tests::{get_contract, web3, ACCOUNT_1};
-
-    async fn deploy_contract() -> Result<H256> {
-        let web3 = web3();
-        let from = *ACCOUNT_1;
-        // let data = get_contract();
-        let data = [0, 1];
-        web3.deploy(from, &data).await
-    }
 
     #[tokio::test]
     async fn it_deploys_a_contract() {
-        let response = deploy_contract().await;
-        assert!(response.is_ok());
+        let response = deploy_contract(true).await;
     }
 
     #[tokio::test]
     async fn it_gets_a_contract_code() {
         let web3 = web3();
-        let tx_hash = deploy_contract().await.unwrap();
+        let tx_hash = deploy_contract(true).await;
 
         // TODO(ddimaria): use polling or callbacks instead of waiting
         sleep(Duration::from_millis(1000)).await;

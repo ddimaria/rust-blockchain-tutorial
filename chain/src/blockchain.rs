@@ -232,8 +232,17 @@ impl BlockChain {
                     contract_address = self.accounts.add_contract_account(&from, data).ok();
                     Ok(())
                 }
-                TransactionKind::ContractExecution(_from, _to, _data) => {
-                    unimplemented!()
+                TransactionKind::ContractExecution(_from, to, data) => {
+                    let code = self
+                        .accounts
+                        .get_account(&to)?
+                        .code_hash
+                        .ok_or_else(|| ChainError::NotAContractAccount(to.to_string()))?;
+                    let (function, params): (&str, Vec<&str>) = bincode::deserialize(&data)?;
+
+                    // call the function in the contract
+                    runtime::contract::call_function(&code, function, &params)
+                        .map_err(|e| ChainError::RuntimeError(to.to_string(), e.to_string()))
                 }
             }?;
 

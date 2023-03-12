@@ -9,28 +9,40 @@ Before running tests, you'll need to compile any contracts in the `/contracts` f
 
 ## Invoking a Contract Function
 
-The `call_function!` macro invokes contract function calls with variable arguments:
+This code can convert the textual representation of a contract function call to a function call within the wasmtime runtime.
+Parameters are listed in pairs of parameter type and paramater value.
 
 ```rust
-macro_rules! call_function {
-    ($contract: ident, $function: ident, $($args:tt),*) => {{
-        let bytes = include_bytes!(concat!(
-            "./../../target/wasm32-unknown-unknown/release/",
-            stringify!($contract),
-            "_wit.wasm"
-        ));
-        paste!{
-            if let Ok((mut store, contract)) = load_contract(bytes) {
-                [contract. $contract . $function(&mut store, $($args),*)];
-            };
-        }
-    }};
-}
+let bytes = include_bytes!("./../../target/wasm32-unknown-unknown/release/erc20_wit.wasm");
+let function_name = "construct";
+let params = &["String", "Rust Coin", "String", "RustCoin"];
+
+call_function(bytes, function_name, params)?;
 ```
 
-For example, to invoke the `mint` function on the `erc20` contract:
+## Types
 
-```rust
-let address = H160::from_str("0x5969c42d7f9ad971cb7fec4299e989cf308ca6f4")?;
-call_function!(erc20, mint, address, 10);
-```
+To conform with the WASM Component Model, the following types are supported:
+
+* Bool(bool)
+* S8(i8)
+* U8(u8)
+* S16(i16)
+* U16(u16)
+* S32(i32)
+* U32(u32)
+* S64(i64)
+* U64(u64)
+* Float32(f32)
+* Float64(f64)
+* Char(char)
+* String(Box<str>)
+* List(List)
+* Record(Record)
+* Tuple(Tuple)
+* Variant(Variant)
+* Enum(Enum)
+* Union(Union)
+* Option(OptionVal)
+* Result(ResultVal)
+* Flags(Flags)
